@@ -1,9 +1,13 @@
-<!DOCTYPE html> <html lang="ko"> <head> <meta charset="UTF-8"> <meta name="viewport" 
-content="width=device-width, initial-scale=1, viewport-fit=cover"> <title>SQL Injection 실습실 — 보안 레벨별 
-데모</title> <link rel="preconnect" href="https://fonts.googleapis.com"> <link rel="preconnect" 
-href="https://fonts.gstatic.com" crossorigin> <link 
-href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" 
-rel="stylesheet"> <style>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Web Security Lab — OWASP Top 10 실습실</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
   :root{
     --bg:#12151c; --panel:#1a1f29; --border:#2a3142; --text:#e8e6e1; --muted:#8b93a5;
     --accent:#e2a63c; --danger:#e2574c; --success:#4fb87d;
@@ -12,672 +16,78 @@ rel="stylesheet"> <style>
   }
   *{box-sizing:inherit;}
   html,body{background:var(--bg);}
-  body{margin:0; color:var(--text); font-family:var(--sans); line-height:1.6; padding:32px 18px 80px;}
+  body{margin:0; color:var(--text); font-family:var(--sans); line-height:1.6; padding:40px 18px 80px;}
   .wrap{max-width:760px;margin:0 auto;}
-  header{margin-bottom:22px;}
-  h1{font-size:22px; margin:0 0 6px; font-weight:700; letter-spacing:-0.2px;}
+  header{margin-bottom:30px; text-align:center;}
+  h1{font-size:24px; margin:0 0 8px; font-weight:700;}
   .sub{color:var(--muted); font-size:14.5px; margin:0;}
-
-  .tabs{display:flex; gap:8px; flex-wrap:wrap; margin:20px 0 18px;}
-  .tab{
-    font-family:var(--mono); font-size:13px; padding:8px 12px; border-radius:5px;
-    border:1px solid var(--border); background:var(--panel); color:var(--muted); cursor:pointer;
+  .grid{display:grid; grid-template-columns:1fr; gap:14px;}
+  @media(min-width:560px){.grid{grid-template-columns:1fr 1fr;}}
+  a.card{
+    display:block; background:var(--panel); border:1px solid var(--border); border-radius:8px;
+    padding:20px; text-decoration:none; color:var(--text); transition:border-color .15s;
   }
-  .tab.active{border-color:var(--accent); color:var(--accent); background:#241f14;}
-  .tab .chk{color:var(--success); margin-left:5px;}
+  a.card:hover{border-color:var(--accent);}
+  .card .tag{font-family:var(--mono); font-size:12px; color:var(--success); border:1px solid var(--success); border-radius:3px; padding:2px 7px; display:inline-block; margin-bottom:10px;}
+  .card.disabled{opacity:.45; pointer-events:none;}
+  .card.disabled .tag{color:var(--muted); border-color:var(--muted);}
+  .card h2{font-size:16px; margin:0 0 6px;}
+  .card p{font-size:13.5px; color:#b9bdc6; margin:0;}
+  footer{text-align:center; color:var(--muted); font-size:12.5px; margin-top:36px;}
 
-  .overview{font-size:13px; color:var(--muted); margin-bottom:6px;}
-
-  section{background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:20px; margin-bottom:16px;}
-  section h2{font-size:15px; margin:0 0 10px; font-weight:700; display:flex; align-items:center; gap:8px;}
-  .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex:none;}
-
-  .theory p{font-size:14.5px; color:#cfd2da; margin:0 0 10px;}
-  pre{background:#0d1016; border:1px solid var(--border); border-radius:5px; padding:12px 14px;
-      font-family:var(--mono); font-size:13px; color:#c9d6e3; overflow-x:auto; margin:0; line-height:1.55;}
-  .note{font-size:13px; color:var(--muted); margin-top:8px;}
-
-  label{display:block; font-size:13px; color:var(--muted); margin:0 0 5px;}
-  input[type=text]{width:100%; background:#0d1016; border:1px solid var(--border); color:var(--text);
-    font-family:var(--mono); font-size:14px; padding:9px 11px; border-radius:4px; margin-bottom:14px;}
-  input:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent);}
-  button{font-family:var(--sans); font-size:14px; font-weight:500; cursor:pointer; border-radius:4px;
-    padding:9px 16px; border:1px solid var(--border); background:#242b39; color:var(--text);}
-  button.primary{background:var(--accent); border-color:var(--accent); color:#1a1206; font-weight:700;}
-  button:disabled{opacity:0.4; cursor:not-allowed;}
-  button.ghost{background:transparent;}
-  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
-
-  .qpreview-label{font-size:12.5px; color:var(--muted); margin:14px 0 6px;}
-  .qpreview{white-space:pre-wrap; word-break:break-all;}
-
-  #result{margin-top:14px; font-size:14px; font-family:var(--mono); padding:10px 12px; border-radius:4px; display:none; white-space:pre-wrap;}
-  #result.ok{display:block; background:rgba(79,184,125,0.12); border:1px solid var(--success); color:var(--success);}
-  #result.fail{display:block; background:rgba(226,87,76,0.1); border:1px solid var(--danger); color:#f0a49e;}
-  #result.err{display:block; background:rgba(226,166,60,0.1); border:1px solid var(--accent); color:var(--accent);}
-
-  .hint{border-top:1px solid var(--border); padding:12px 0; font-size:14px; color:#d7dae0;}
-  .hint:first-child{border-top:none; padding-top:0;}
-  .hint .htitle{font-size:12.5px; color:var(--muted); font-family:var(--mono); margin-bottom:4px;}
-  .locked{color:var(--muted); font-size:13.5px;}
-  .attempts{font-size:12.5px; color:var(--muted); font-family:var(--mono);}
-
-  #explain{display:none;}
-  #explain h2{color:var(--success);}
-  .codepair{display:grid; grid-template-columns:1fr; gap:12px;}
-  @media(min-width:600px){.codepair{grid-template-columns:1fr 1fr;}}
-  .codepair .lbl{font-size:12.5px; color:var(--muted); margin-bottom:6px; font-family:var(--mono);}
-
-  footer{text-align:center; color:var(--muted); font-size:12.5px; margin-top:30px;}
-
-  .skiplink{display:inline-block; margin-top:12px; font-size:13px; color:var(--accent); text-decoration:none; font-family:var(--mono);}
-  .skiplink:hover{text-decoration:underline;}
-  .basics{scroll-margin-top:16px;}
-  .flow{font-family:var(--mono); font-size:12.5px; color:var(--muted); text-align:center; margin:10px 0;}
-  table{width:100%; border-collapse:collapse; font-size:13.5px; margin-top:4px;}
-  th,td{text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); vertical-align:top;}
-  th{color:var(--muted); font-weight:600; font-family:var(--mono); font-size:12px;}
-  td{color:#d7dae0;}
-  .box{background:#0d1016; border:1px solid var(--border); border-radius:5px; padding:14px 16px; margin-top:10px;}
-  .box h3{font-size:13.5px; margin:0 0 6px; color:var(--accent);}
-  ul.plain{margin:0; padding-left:18px; font-size:14px; color:#d7dae0;}
+  details.usage{background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:4px 16px; margin:14px 0 20px;}
+  details.usage summary{cursor:pointer; padding:12px 0; font-size:14px; font-weight:600; color:var(--accent); list-style:none;}
+  details.usage summary::-webkit-details-marker{display:none;}
+  details.usage summary::before{content:"▸ "; color:var(--muted);}
+  details.usage[open] summary::before{content:"▾ "; color:var(--muted);}
+  details.usage .usage-body{padding:0 0 14px;}
+  ul.plain{margin:0; padding-left:18px; font-size:13.5px; color:#d7dae0;}
   ul.plain li{margin-bottom:6px;}
-  #practice{scroll-margin-top:16px;}
-  .quizOption{border:1px solid var(--border); border-radius:5px; padding:12px 14px; margin-bottom:10px; cursor:pointer; background:#0d1016;}
-  .quizOption:hover{border-color:var(--accent);}
-  .quizOption .qlabel{font-family:var(--mono); font-size:12.5px; color:var(--accent); margin-bottom:6px;}
-  .quizOption pre{background:transparent; border:none; padding:0; margin:0;}
-  #quizResult{display:none; margin-top:12px; padding:10px 12px; border-radius:4px; font-size:14px; white-space:pre-wrap;}
-  #quizResult.ok{display:block; background:rgba(79,184,125,0.12); border:1px solid var(--success); color:var(--success);}
-  #quizResult.no{display:block; background:rgba(226,87,76,0.1); border:1px solid var(--danger); color:#f0a49e;}
-
-  /* ---- 정답/오답 효과 ---- */
-  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
-  @keyframes pop{0%{transform:scale(.96);box-shadow:0 0 0 0 rgba(79,184,125,.55)}50%{transform:scale(1.015);box-shadow:0 0 0 8px rgba(79,184,125,0)}100%{transform:scale(1);box-shadow:0 0 0 0 rgba(79,184,125,0)}}
-  @keyframes flashRed{0%{box-shadow:0 0 0 0 rgba(226,87,76,.5)}100%{box-shadow:0 0 0 10px rgba(226,87,76,0)}}
-  #result.ok,#quizResult.ok{animation:pop .5s ease-out;}
-  #result.fail,#quizResult.no{animation:shake .4s ease-in-out, flashRed .6s ease-out;}
-  #result.err{animation:shake .35s ease-in-out;}
-  .quizOption.correct{border-color:var(--success); background:rgba(79,184,125,.1); animation:pop .5s ease-out;}
-  .quizOption.wrong{border-color:var(--danger); background:rgba(226,87,76,.1); animation:shake .4s ease-in-out;}
-  .quizOption.reveal{border-color:var(--success); border-style:dashed;}
-  .quizOption .qlabel .mark{margin-left:8px; font-weight:700;}
-  .tab.solvedflash{animation:pop .6s ease-out;}
-  @media (prefers-reduced-motion: reduce){
-    #result,#quizResult,.quizOption,.tab{animation:none !important;}
-  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>SQL Injection 실습실 — 보안 레벨별 데모</h1>
-    <p class="sub">같은 SQL Injection이라도 서버가 방어하는 방식에 따라 공격 기법이 달라집니다. 레벨을 선택해서 각각 다른 방어를 뚫어보세요. 모두 브라우저 안 시뮬레이션이며 실제 DB는 사용하지 않습니다.</p>
-    <a class="skiplink" href="#practice">기초 건너뛰고 바로 실습하기 →</a>
+    <h1>Web Security Lab</h1>
+    <p class="sub">OWASP Top 10 보안 취약점을 직접 공격해보면서 배우는 실습실입니다. 힌트는 단계적으로 열리고, 성공하면 취약한 코드와 패치된 코드를 바로 비교해서 보여줍니다.</p>
   </header>
 
-  <section class="basics">
-    <h2><span class="dot"></span>SQL Injection이란?</h2>
-    <p style="font-size:14.5px;color:#cfd2da;margin:0;">웹 애플리케이션이 사용자 입력값을 제대로 검증하지 않고 SQL 쿼리에 그대로 끼워 넣을 때, 공격자가 입력값을 통해 쿼리의 구조 자체를 바꿔버리는 공격입니다. 로그인을 우회하거나, 원래 볼 수 없어야 할 데이터를 열람하거나, 데이터베이스 자체를 조작할 수 있습니다.</p>
-  </section>
-
-  <section class="basics">
-    <h2><span class="dot"></span>SQL 쿼리의 기본 구조</h2>
-    <pre>SELECT * FROM users
-WHERE username='admin'
-  AND password='1234';</pre>
-    <table style="margin-top:12px;">
-      <tr><th>SELECT</th><td>무엇을 조회할지 (여기서는 모든 컬럼 *)</td></tr>
-      <tr><th>FROM</th><td>어느 테이블에서 찾을지 (users 테이블)</td></tr>
-      <tr><th>WHERE</th><td>어떤 조건을 만족하는 행만 가져올지</td></tr>
-    </table>
-    <p class="note">WHERE 뒤의 조건이 <b>참(true)</b>인 행만 결과로 반환됩니다. SQL Injection은 결국 이 조건을 공격자가 원하는 대로 항상 참으로 만드는 것이 핵심입니다.</p>
-  </section>
-
-  <section class="basics">
-    <h2><span class="dot"></span>입력값이 SQL에 들어가는 과정</h2>
-    <p style="font-size:14.5px;color:#cfd2da;">서버 코드는 보통 이런 식으로 입력값을 쿼리 문자열에 직접 이어 붙입니다.</p>
-    <pre>$query = "SELECT * FROM users WHERE username='" . $input . "' AND ...";</pre>
-    <p class="note" style="margin-bottom:10px;">문제는 <code>$input</code> 자리에 <b>무엇이 들어와도 그대로 쿼리 문법의 일부가 된다</b>는 점입니다. 정상적인 값과 공격 값을 넣었을 때 실제 쿼리가 어떻게 달라지는지 비교해보세요.</p>
-    <div class="codepair">
-      <div>
-        <div class="lbl">정상 입력 → 정상 쿼리</div>
-        <pre>아이디: admin
-비밀번호: 1234
-
-↓
-
-WHERE username='admin'
-  AND password='1234'</pre>
-      </div>
-      <div>
-        <div class="lbl">공격 입력 → 변조된 쿼리</div>
-        <pre>아이디: admin' OR '1'='1' --
-비밀번호: (아무거나)
-
-↓
-
-WHERE username='admin'
-  OR '1'='1' --...</pre>
-      </div>
-    </div>
-    <p class="note">오른쪽은 따옴표로 원래 문자열을 미리 닫고 <code>OR '1'='1'</code>을 붙여서, 비밀번호 조건과 상관없이 WHERE 절 전체가 항상 참이 되도록 만든 것입니다. <code>--</code> 뒤는 주석 처리되어 나머지 조건은 아예 무시됩니다.</p>
-  </section>
-
-  <section class="basics">
-    <h2><span class="dot"></span>취약한 코드의 특징</h2>
-    <ul class="plain">
-      <li>사용자 입력을 문자열 그대로 SQL 쿼리에 이어 붙인다 (문자열 concatenation)</li>
-      <li>입력값의 형식(길이, 타입, 허용 문자)을 검증하지 않는다</li>
-      <li>따옴표(')나 세미콜론(;), 주석(-- , #) 같은 특수문자를 걸러내지 않는다</li>
-      <li>블랙리스트 방식으로 특정 키워드만 막으려 한다 (우회가 항상 가능)</li>
-      <li>DB 오류 메시지를 사용자에게 그대로 노출한다 (공격자가 구조를 추측하기 쉬워짐)</li>
-    </ul>
-    <p class="note" style="margin-top:10px;">입력값 검증(길이·형식 체크, 특수문자 필터링)은 <b>보조적인 방어책</b>일 뿐입니다. SQL Injection의 근본적인 방어책으로 문자열 필터링에 의존해서는 안 됩니다 — SQL 구조와 사용자 입력을 완전히 분리하는 <b>Prepared Statement</b>가 핵심입니다. (Lv.3에서 필터링만으로는 왜 부족한지 직접 확인하게 됩니다.)</p>
-  </section>
-
-  <section class="basics">
-    <h2><span class="dot"></span>공격 원리</h2>
-    <div class="flow">입력값 삽입 → 쿼리 구조 변경 → 조건이 항상 참(또는 원하는 대로) → 의도하지 않은 결과 반환</div>
-    <p style="font-size:14.5px;color:#cfd2da;margin:0;">공격자는 애플리케이션의 실제 코드를 볼 수 없지만, 입력값에 따라 결과(성공/실패/오류 메시지)가 어떻게 달라지는지 관찰하면서 쿼리 구조를 역으로 추측하고, 그 구조를 자신에게 유리하게 바꾸는 페이로드를 조금씩 완성해 나갑니다. 아래 실습의 힌트도 바로 이 사고 과정을 단계별로 따라가도록 설계되어 있습니다.</p>
-  </section>
-
-  <section class="basics">
-    <h2><span class="dot"></span>방어 방법 (개요)</h2>
-    <p style="font-size:14.5px;color:#cfd2da;margin:0;">핵심 방어책은 <b>입력값을 절대 SQL 문법으로 해석되지 않도록 분리하는 것</b>입니다 (Prepared Statement / 파라미터 바인딩). 이 외에도 입력값 검증, 에러 메시지 노출 최소화 등이 함께 쓰입니다. 자세한 대응표는 아래 실습을 마친 뒤 정리 섹션에서 확인할 수 있습니다.</p>
-  </section>
-
-  <div id="practice"></div>
-  <div class="attempts" id="progress" style="margin-bottom:10px;"></div>
-  <div class="tabs" id="tabs"></div>
-  <div class="note" style="margin:-10px 0 14px;">권장 순서: Lv.1 → Lv.2 → Lv.3 → Lv.4 → Challenge (순서대로 하지 않아도 자유롭게 이동할 수 있습니다)</div>
-
-  <section class="theory" id="theorySection">
-    <h2><span class="dot"></span><span id="theoryTitle"></span></h2>
-    <div id="theoryBody"></div>
-  </section>
-
-  <section>
-    <h2><span class="dot"></span>실습</h2>
-    <div id="fields"></div>
-    <div class="qpreview-label">실시간 쿼리 미리보기</div>
-    <pre class="qpreview" id="qpreview"></pre>
-    <div class="row" style="margin-top:14px;">
-      <button class="primary" id="runBtn">실행</button>
-      <button class="ghost" id="resetBtn">초기화</button>
-      <span class="attempts" id="attemptsLabel"></span>
-    </div>
-    <div id="result"></div>
-  </section>
-
-  <section>
-    <h2><span class="dot"></span>힌트</h2>
-    <div id="hints"></div>
-  </section>
-
-  <section id="explain">
-    <h2><span class="dot"></span>해설</h2>
-    <p id="explainWhy" style="font-size:14.5px;color:#cfd2da;"></p>
-    <div class="codepair" style="margin-top:14px;">
-      <div><div class="lbl">취약한 코드</div><pre id="explainVuln"></pre></div>
-      <div><div class="lbl">고친 코드</div><pre id="explainFixed"></pre></div>
-    </div>
-  </section>
-
-  <section>
-    <h2><span class="dot"></span>방어자 퀴즈 — 안전한 코드 고르기</h2>
-    <p class="note" style="margin:0 0 12px;">지금까지는 공격자 입장이었다면, 이번엔 반대로 생각해볼 차례입니다. 다음 세 가지 코드 중 SQL Injection을 올바르게 방어한 것은 무엇일까요?</p>
-    <div id="quizOptions"></div>
-    <div id="quizResult"></div>
-  </section>
-
-  <section>
-    <h2><span class="dot"></span>정리 — 공격 유형과 방어</h2>
-    <p style="font-size:14px;color:#b9bdc6;margin:0 0 12px;">🎉 여기까지 오셨다면 SQL Injection의 핵심 원리와 방어법을 한 바퀴 다 둘러본 거예요. 아래 표로 정리하고 마무리할게요.</p>
-    <table>
-      <tr><th>취약점</th><th>문제</th><th>방어</th></tr>
-      <tr><td>문자열 연결 (Lv.1)</td><td>입력값이 그대로 SQL 구조에 포함됨</td><td>Prepared Statement</td></tr>
-      <tr><td>숫자형 직접 삽입 (Lv.2)</td><td>따옴표 없이도 조건식 자체가 변조됨</td><td>파라미터 바인딩</td></tr>
-      <tr><td>블랙리스트 필터 (Lv.3)</td><td>키워드를 겹쳐 쓰면 필터를 우회함</td><td>Prepared Statement (필터링 자체를 신뢰하지 않기)</td></tr>
-      <tr><td>에러 메시지 노출</td><td>DB 구조·오류 내용을 추측할 단서 제공</td><td>운영 환경에서 상세 오류 메시지 숨기기</td></tr>
-    </table>
-    <p class="note" style="margin-top:10px;">공통적으로 가장 근본적인 해법은 <b>Prepared Statement(파라미터 바인딩)</b>입니다. Lv.4에서 확인했듯, 입력값이 쿼리 구조와 분리되는 순간 위 네 가지 문제가 동시에 해결됩니다.</p>
-
-    <div class="box">
-      <h3>심화: SQL Injection이 뚫려도 피해를 줄이는 방법</h3>
-      <p style="font-size:13.5px;color:#b9bdc6;margin:0 0 8px;">아래는 SQLi 자체의 방어책은 아니지만, 뚫렸을 때 피해 범위를 줄여주는 보완적인 설계입니다.</p>
-      <ul class="plain" style="font-size:13.5px;">
-        <li><b>최소 권한 원칙</b> — 앱이 쓰는 DB 계정에 꼭 필요한 권한만 부여 (예: 조회용 계정에 DROP 권한을 주지 않음)</li>
-        <li><b>비밀번호 안전 저장</b> — 평문 대신 bcrypt 등으로 해싱해서 저장 (뚫려도 원본 비밀번호는 못 얻음)</li>
+  <details class="usage">
+    <summary>📖 사용법 (처음이시라면 펼쳐보세요)</summary>
+    <div class="usage-body">
+      <ul class="plain">
+        <li>아래 카드를 눌러 원하는 취약점 실습으로 이동하세요.</li>
+        <li>각 실습은 <b>기초 이론 → 레벨별 실습(힌트 제공) → 종합 Challenge(힌트 없음) → 방어자 퀴즈 → 정리</b> 순서로 구성되어 있어요.</li>
+        <li>레벨은 순서대로 진행하는 걸 권장하지만, 이미 아는 내용이 있다면 자유롭게 건너뛰어도 됩니다.</li>
+        <li>모든 실습은 브라우저 안에서만 동작하는 시뮬레이션이라 실제 서버나 DB에 영향을 주지 않습니다.</li>
       </ul>
     </div>
-  </section>
+  </details>
 
-  <footer>이 데모는 학습용 시뮬레이션입니다 · 실제 DB를 사용하지 않습니다</footer>
+  <div class="grid">
+    <a class="card" href="sqli.html">
+      <span class="tag">● 실습 가능</span>
+      <h2>SQL Injection</h2>
+      <p>로그인 우회부터 필터 우회, Prepared Statement로 패치된 버전까지 — 4개 레벨 + 종합 Challenge + 방어자 퀴즈</p>
+    </a>
+    <a class="card" href="xss.html">
+      <span class="tag">● 실습 가능</span>
+      <h2>Cross-Site Scripting (XSS)</h2>
+      <p>Reflected / Stored XSS부터 필터 우회, HTML 이스케이프로 패치된 버전까지 — 4개 레벨 + 종합 Challenge + 방어자 퀴즈</p>
+    </a>
+    <a class="card disabled" href="#">
+      <span class="tag">준비 중</span>
+      <h2>Broken Access Control (IDOR)</h2>
+      <p>다른 사용자의 데이터에 URL 조작만으로 접근하는 취약점</p>
+    </a>
+    <a class="card disabled" href="#">
+      <span class="tag">준비 중</span>
+      <h2>Broken Authentication</h2>
+      <p>세션/비밀번호 관리 미흡으로 인한 인증 우회</p>
+    </a>
+  </div>
+
+  <footer>모든 실습은 브라우저 안 시뮬레이션입니다 · 실제 서버/DB를 사용하지 않습니다</footer>
 </div>
-
-<script>
-// ===== fake data =====
-const USERS = [ {username:'admin', password:'S3cur3P@ss!'}, {username:'guest', password:'guest123'} ];
-const PRODUCTS = [ {id:1, name:'무선 키보드'}, {id:2, name:'노트북 거치대'}, {id:999, name:'[기밀] 미출시 신제품 스펙'} ];
-
-// ===== generic WHERE-clause engine (reused across levels) =====
-function tokenize(s){
-  const tokens = []; let i = 0;
-  while (i < s.length){
-    const c = s[i];
-    if (/\s/.test(c)){ i++; continue; }
-    if (c === "'"){
-      let j=i+1, buf='';
-      while (j<s.length){
-        if (s[j]==="'" && s[j+1]==="'"){ buf+="'"; j+=2; continue; }
-        if (s[j]==="'"){ j++; break; }
-        buf+=s[j]; j++;
-      }
-      tokens.push({type:'str', value:buf}); i=j; continue;
-    }
-    // comments are only recognized here, i.e. outside of quoted strings —
-    // '--' or '#' inside a '...' literal was already consumed above and never reaches this check.
-    if (c==='-' && s[i+1]==='-'){ break; }
-    if (c==='#'){ break; }
-    if (c==='/' && s[i+1]==='*'){
-      const close = s.indexOf('*/', i+2);
-      i = (close===-1) ? s.length : close+2;
-      continue;
-    }
-    if (c==='(' || c===')'){ tokens.push({type:c}); i++; continue; }
-    if (c==='='){ tokens.push({type:'op'}); i++; continue; }
-    let j=i, buf='';
-    while (j<s.length && /[A-Za-z0-9_.]/.test(s[j])){ buf+=s[j]; j++; }
-    if (buf){
-      if (/^[0-9]+$/.test(buf)) tokens.push({type:'num', value:buf});
-      else {
-        const up = buf.toUpperCase();
-        if (up==='OR' || up==='AND') tokens.push({type:up.toLowerCase()});
-        else tokens.push({type:'id', value:buf});
-      }
-      i=j; continue;
-    }
-    throw new Error("문법 오류 near '" + c + "'");
-  }
-  return tokens;
-}
-function parseWhere(tokens){
-  let pos=0;
-  const peek=()=>tokens[pos];
-  const eat=(t)=>(peek() && peek().type===t) ? tokens[pos++] : null;
-  function parseValue(){
-    const t=peek();
-    if (t && (t.type==='str'||t.type==='num')){ pos++; return {kind:'lit', value:t.value}; }
-    if (t && t.type==='id'){ pos++; return {kind:'ref', value:t.value.toLowerCase()}; }
-    throw new Error('문법 오류: 값이 필요합니다');
-  }
-  function parseAtom(){
-    if (eat('(')){ const e=parseOr(); if(!eat(')')) throw new Error("문법 오류: ')' 필요"); return e; }
-    const left=parseValue();
-    if (eat('op')){ const right=parseValue(); return {kind:'eq', left, right}; }
-    return {kind:'truthy', value:left};
-  }
-  function parseAnd(){ let n=parseAtom(); while(eat('and')) n={kind:'and',left:n,right:parseAtom()}; return n; }
-  function parseOr(){ let n=parseAnd(); while(eat('or')) n={kind:'or',left:n,right:parseAnd()}; return n; }
-  const tree=parseOr();
-  if (pos<tokens.length) throw new Error('문법 오류: 처리되지 않은 문자가 남음');
-  return tree;
-}
-function resolve(v,row){ return v.kind==='lit' ? v.value : (row[v.value]!==undefined ? row[v.value] : ''); }
-function evalBool(node,row){
-  switch(node.kind){
-    case 'eq': return String(resolve(node.left,row))===String(resolve(node.right,row));
-    case 'truthy': { const v=resolve(node.value,row); return v!=='' && v!=='0'; }
-    case 'and': return evalBool(node.left,row) && evalBool(node.right,row);
-    case 'or': return evalBool(node.left,row) || evalBool(node.right,row);
-  }
-}
-function runWhere(rawQuery, db){
-  const clause = rawQuery.replace(/^.*?WHERE\s+/i,'');
-  const tree = parseWhere(tokenize(clause));
-  return db.filter(r=>evalBool(tree,r));
-}
-function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-// ===== level definitions =====
-const LEVELS = [
-  {
-    id:'lv1', tab:'Lv.1 로그인 우회', short:'Lv.1', diff:'Easy',
-    fields:[{key:'u',label:'아이디',ph:'username'},{key:'p',label:'비밀번호',ph:'password'}],
-    theoryTitle:'왜 취약한가',
-    theoryHtml:"<p>입력값을 검증 없이 그대로 쿼리에 이어 붙입니다.</p><pre>SELECT * FROM users\nWHERE username='{아이디}' AND password='{비밀번호}'</pre><p class='note'>따옴표(')를 넣으면 쿼리 구조 자체가 바뀔 수 있습니다.</p>",
-    buildQuery:(v)=> "SELECT * FROM users WHERE username='"+v.u+"' AND password='"+v.p+"'",
-    db: USERS, mode:'login',
-    hints:[
-      "이 로그인 폼은 입력을 그대로 쿼리에 붙입니다. 실시간 쿼리 박스를 보면서 입력해보세요.",
-      "아이디 칸에 작은따옴표(') 하나만 넣고 실행해보세요. 어떤 결과가 나오나요?",
-      "따옴표로 문자열을 미리 닫고, OR로 항상 참이 되는 조건을 붙이면 WHERE 전체가 참이 됩니다.",
-      "예: admin' OR '1'='1' -- 를 아이디 칸에 입력해보세요."
-    ],
-    explain:{
-      why:"입력값이 <code>' OR '1'='1'</code> 형태로 조건을 항상 참으로 만들어, 비밀번호를 몰라도 WHERE 절 전체가 true가 되었습니다. (참고: 이 데모의 비밀번호는 학습 목적상 평문으로 저장되어 있지만, 실제 서비스에서는 SQL Injection 방어와는 별개로 비밀번호를 반드시 해싱(예: bcrypt)해서 저장해야 합니다.)",
-      vuln:"$q = \"SELECT * FROM users\n WHERE username='$u'\n   AND password='$p'\";\nmysqli_query($conn, $q);",
-      fixed:"$stmt = $conn->prepare(\n \"SELECT * FROM users\n  WHERE username=?\n    AND password=?\");\n$stmt->bind_param(\"ss\",$u,$p);\n$stmt->execute();"
-    }
-  },
-  {
-    id:'lv2', tab:'Lv.2 숫자형 검색', short:'Lv.2', diff:'Easy-Medium',
-    fields:[{key:'id',label:'상품 ID',ph:'예: 1'}],
-    theoryTitle:'숫자형 파라미터는 따옴표가 없다',
-    theoryHtml:"<p>이 조회창은 숫자를 그대로 쿼리에 넣습니다. 따옴표가 아예 없어서 문자열 이스케이프와는 다른 접근이 필요합니다.</p><pre>SELECT * FROM products WHERE id={상품ID}</pre><p class='note'>따옴표가 없어도 조건식 자체를 조작하면 됩니다.</p>",
-    buildQuery:(v)=> "SELECT * FROM products WHERE id="+v.id,
-    db: PRODUCTS, mode:'search',
-    hints:[
-      "따옴표가 없어도 조작이 가능할까요? 쿼리 전체가 하나의 논리식이라는 점을 떠올려보세요.",
-      "상품 ID 뒤에 조건을 이어 붙일 수 있습니다. 항상 참이 되는 조건을 만드는 연산자를 떠올려보세요.",
-      "OR 연산자로 항상 참이 되는 조건을 뒤에 붙여보세요. 예: 0 OR 1=1",
-      "이렇게 하면 목록에 없던(id를 모르는) 상품까지 한꺼번에 노출됩니다. 시도: 0 OR 1=1"
-    ],
-    explain:{
-      why:"숫자형 파라미터는 따옴표 없이 쿼리에 삽입되므로, <code>OR 1=1</code> 같은 조건만으로도 WHERE 절 전체를 참으로 만들어 모든 행을 반환시킬 수 있습니다.",
-      vuln:"$q = \"SELECT * FROM products\n WHERE id=\" . $_GET['id'];\nmysqli_query($conn, $q);",
-      fixed:"$stmt = $conn->prepare(\n \"SELECT * FROM products\n  WHERE id=?\");\n$stmt->bind_param(\"i\", $id);\n$stmt->execute();"
-    }
-  },
-  {
-    id:'lv3', tab:'Lv.3 필터 우회', short:'Lv.3', diff:'Medium',
-    fields:[{key:'u',label:'아이디',ph:'username'},{key:'p',label:'비밀번호',ph:'password'}],
-    theoryTitle:'필터가 있다고 안전한 건 아니다',
-    theoryHtml:"<p>이번 로그인 폼은 입력값에서 <code>OR</code>이라는 문자열을 대소문자 구분 없이 전부 제거합니다.</p><pre>input = input.replace(/or/gi, '')</pre><p class='note'>입력값에서 특정 키워드를 지우는 이런 <b>블랙리스트 방식</b>은, 지운 것처럼 보여도 SQL Injection을 안전하게 막지 못합니다. 왜 그런지 직접 확인해보세요.</p>",
-    buildQuery:(v)=> "SELECT * FROM users WHERE username='"+v.u.replace(/or/gi,'')+"' AND password='"+v.p.replace(/or/gi,'')+"'",
-    db: USERS, mode:'login',
-    hints:[
-      "그냥 OR을 쓰면 필터에 의해 사라집니다. 실시간 쿼리 박스에서 확인해보세요.",
-      "필터는 지금 눈앞에 있는 문자열에서 OR을 찾아 한 번에 지울 뿐, 지우고 난 '결과'를 다시 검사하지는 않습니다. 이 사실을 이용할 방법이 있을까요?",
-      "OR을 겹쳐서 써보세요. 예: OORR — 가운데 글자들이 지워지고 나면 남은 앞뒤 글자가 어떻게 될지 실시간 쿼리 박스로 확인해보세요.",
-      "정답 예시: admin' OORR '1'='1' -- (가운데 'OR'만 제거되고, 남은 앞뒤 글자가 다시 'OR'을 만듭니다)"
-    ],
-    explain:{
-      why:"필터는 <code>OR</code>이라는 문자열을 찾으면 지우지만, 지운 결과를 다시 검사하지는 않습니다. 그래서 <code>OORR</code>처럼 겹쳐 쓰면 가운데의 'OR'만 제거되고 남은 앞뒤 글자가 다시 'OR'을 만들어냅니다. 이처럼 특정 키워드를 제거하는 블랙리스트 필터링만으로는 SQL Injection을 안전하게 방어할 수 없습니다.",
-      vuln:"$u = str_ireplace('or','',$u);\n$p = str_ireplace('or','',$p);\n$q = \"...WHERE username='$u'\n AND password='$p'\";",
-      fixed:"// 블랙리스트 대신 Prepared Statement 사용\n$stmt = $conn->prepare(\n \"SELECT * FROM users\n  WHERE username=?\n    AND password=?\");\n$stmt->bind_param(\"ss\",$u,$p);"
-    }
-  },
-  {
-    id:'lv4', tab:'Lv.4 패치된 버전', short:'Lv.4', diff:'Safe', safe:true,
-    fields:[{key:'u',label:'아이디',ph:'username'},{key:'p',label:'비밀번호',ph:'password'}],
-    theoryTitle:'이 레벨은 패치되어 있습니다',
-    theoryHtml:"<p>Prepared Statement는 SQL '구조'와 입력 '값'을 미리 분리합니다. 구조는 절대 바뀌지 않고, 입력값은 그 안에 문자열 그대로 끼워질 뿐 SQL 문법으로는 해석되지 않습니다.</p><pre>SELECT * FROM users\nWHERE username = ?\n  AND password = ?</pre><p class='note'>아무 페이로드나 자유롭게 시도해보고, 아래 미리보기에서 구조와 값이 어떻게 분리되는지 관찰해보세요.</p>",
-    buildQuery:(v)=> "SQL 구조 (고정, 절대 바뀌지 않음)\nSELECT * FROM users WHERE username=? AND password=?\n\n바인딩되는 값 (SQL 문법이 아닌 순수 문자열로만 취급됨)\n  username → \""+v.u+"\"\n  password → \""+v.p+"\"",
-    db: USERS, mode:'safe',
-    hints:[],
-    explain:{
-      why:"Prepared Statement에서는 SQL 구조(SELECT ... WHERE username=? AND password=?)가 먼저 고정되고, 입력값은 그 구조의 '빈칸'에 순수한 문자열 값으로만 나중에 끼워집니다. 그래서 입력값 안에 따옴표나 OR, -- 같은 SQL 문법이 들어있어도 그것들은 그냥 '글자'일 뿐, 쿼리 구조를 절대 바꿀 수 없습니다.",
-      vuln:"// Lv.1 방식 (취약)\n$q = \"...username='$u'...\";",
-      fixed:"$stmt = $conn->prepare(\n \"SELECT * FROM users\n  WHERE username=?\n    AND password=?\");\n$stmt->bind_param(\"ss\",$u,$p);\n$stmt->execute();"
-    }
-  },
-  {
-    id:'challenge', tab:'🧪 Challenge', short:'Challenge', diff:'Final', challenge:true,
-    fields:[{key:'u',label:'아이디',ph:'username'},{key:'p',label:'비밀번호',ph:'password'}],
-    theoryTitle:'종합 실습 — 힌트 없이 도전',
-    theoryHtml:"<p>지금까지 배운 걸 직접 조합해볼 차례입니다. 이 로그인 폼에는 <b>OR 필터</b>가 걸려 있습니다.</p><p class='note'>목표: <b>admin 계정으로 로그인 우회하기</b>. 이번엔 힌트가 제공되지 않습니다.</p>",
-    buildQuery:(v)=> "SELECT * FROM users WHERE username='"+v.u.replace(/or/gi,'')+"' AND password='"+v.p.replace(/or/gi,'')+"'",
-    db: USERS, mode:'login',
-    hints:[],
-    explain:{
-      why:"admin 계정으로 로그인하려면 비밀번호 조건을 무력화하는 조건 조작(Lv.1)과, OR 필터를 우회하는 방법(Lv.3)을 동시에 적용해야 했습니다. 실제 공격에서도 여러 방어를 한 번에 뚫어야 하는 경우가 많습니다.",
-      vuln:"$u = str_ireplace('or','',$u);\n$p = str_ireplace('or','',$p);\n$q = \"...WHERE username='$u' AND password='$p'\";",
-      fixed:"Prepared Statement를 사용하면 필터링 로직과 무관하게 이런 조합 공격 자체가 원천적으로 통하지 않습니다."
-    }
-  }
-];
-
-// ===== state =====
-const state = {};
-function getState(id){ return state[id] || (state[id]={attempts:0, unlocked:1, solved:false}); }
-let current = LEVELS[0];
-
-// ===== DOM refs =====
-const tabsEl = document.getElementById('tabs');
-const theoryTitleEl = document.getElementById('theoryTitle');
-const theoryBodyEl = document.getElementById('theoryBody');
-const fieldsEl = document.getElementById('fields');
-const qpreviewEl = document.getElementById('qpreview');
-const resultEl = document.getElementById('result');
-const hintsEl = document.getElementById('hints');
-const attemptsLabel = document.getElementById('attemptsLabel');
-const explainSec = document.getElementById('explain');
-const explainWhy = document.getElementById('explainWhy');
-const explainVuln = document.getElementById('explainVuln');
-const explainFixed = document.getElementById('explainFixed');
-
-function currentVals(){
-  const vals = {};
-  current.fields.forEach(f=> vals[f.key] = document.getElementById('f_'+f.key).value);
-  return vals;
-}
-function updatePreview(){
-  qpreviewEl.textContent = current.buildQuery(currentVals());
-}
-
-function updateProgress(){
-  const total = LEVELS.length;
-  let solved = 0;
-  const parts = LEVELS.map(lv=>{
-    const done = getState(lv.id).solved;
-    if (done) solved++;
-    return (lv.short||lv.tab) + (done ? ' ✓' : ' ○');
-  });
-  const pct = Math.round(solved/total*100);
-  document.getElementById('progress').textContent = '학습 진행도: ' + parts.join('  ') + '  ·  진행률 ' + pct + '%';
-}
-
-function renderTabs(){
-  tabsEl.innerHTML = '';
-  LEVELS.forEach(lv=>{
-    const b = document.createElement('div');
-    b.className = 'tab' + (lv.id===current.id ? ' active' : '');
-    b.innerHTML = lv.tab + (getState(lv.id).solved ? '<span class="chk">✓</span>' : '');
-    b.onclick = ()=> selectLevel(lv.id);
-    tabsEl.appendChild(b);
-  });
-}
-function selectLevel(id){
-  current = LEVELS.find(l=>l.id===id);
-  theoryTitleEl.textContent = current.theoryTitle;
-  theoryBodyEl.innerHTML = current.theoryHtml;
-  fieldsEl.innerHTML = '';
-  current.fields.forEach(f=>{
-    const lab = document.createElement('label'); lab.textContent = f.label; lab.setAttribute('for','f_'+f.key);
-    const inp = document.createElement('input'); inp.type='text'; inp.id='f_'+f.key; inp.placeholder=f.ph;
-    inp.autocomplete='off'; inp.spellcheck=false;
-    inp.addEventListener('input', updatePreview);
-    fieldsEl.appendChild(lab); fieldsEl.appendChild(inp);
-  });
-  resultEl.className=''; resultEl.textContent='';
-  explainSec.style.display = current.safe ? 'block' : 'none';
-  if (current.safe){
-    explainWhy.innerHTML = current.explain.why;
-    explainVuln.textContent = current.explain.vuln;
-    explainFixed.textContent = current.explain.fixed;
-  }
-  updatePreview();
-  renderHints();
-  renderTabs();
-  const st = getState(current.id);
-  attemptsLabel.textContent = '시도 횟수: ' + st.attempts;
-  updateProgress();
-}
-
-function renderHints(){
-  const st = getState(current.id);
-  hintsEl.innerHTML = '';
-  if (current.hints.length===0){
-    const msg = current.challenge
-      ? '이 레벨은 힌트가 제공되지 않습니다 — 지금까지 배운 걸 직접 적용해보세요.'
-      : '이 레벨은 힌트가 필요 없습니다 — 자유롭게 시도해보세요.';
-    hintsEl.innerHTML = '<p class="locked">'+msg+'</p>';
-    return;
-  }
-  current.hints.forEach((text,i)=>{
-    const div = document.createElement('div'); div.className='hint';
-    if (i < st.unlocked){
-      div.innerHTML = '<div class="htitle">힌트 '+(i+1)+'</div>'+escapeHtml(text);
-    } else if (i === st.unlocked){
-      const need = i;
-      const can = st.attempts >= need;
-      div.innerHTML = '<div class="htitle">힌트 '+(i+1)+'</div>';
-      const btn = document.createElement('button');
-      btn.textContent = can ? '힌트 보기' : ('먼저 '+(need-st.attempts)+'번 더 시도해보세요');
-      btn.disabled = !can;
-      btn.onclick = ()=>{ st.unlocked++; renderHints(); };
-      div.appendChild(btn);
-    } else {
-      div.innerHTML = '<span class="locked">잠김</span>';
-    }
-    hintsEl.appendChild(div);
-  });
-}
-
-document.getElementById('runBtn').addEventListener('click', ()=>{
-  const st = getState(current.id);
-  st.attempts++;
-  attemptsLabel.textContent = '시도 횟수: ' + st.attempts;
-  resultEl.className=''; void resultEl.offsetWidth; // 애니메이션 재생을 위해 리셋
-  const vals = currentVals();
-
-  if (current.safe){
-    const row = USERS.find(r=> vals.u===r.username && vals.p===r.password);
-    if (row){
-      resultEl.className='ok';
-      resultEl.textContent = '정상 로그인 성공 ('+row.username+'). 패치가 적용되어 입력값이 쿼리 구조에 영향을 주지 못합니다.';
-      getState(current.id).solved = true;
-      updateProgress();
-    } else {
-      resultEl.className='fail';
-      resultEl.textContent = '로그인 실패. 어떤 SQL 페이로드를 넣어도 이 레벨은 뚫리지 않습니다 — 위 해설을 참고하세요.';
-    }
-    renderHints();
-    return;
-  }
-
-  const raw = current.buildQuery(vals);
-  let rows, err=null;
-  try { rows = runWhere(raw, current.db); }
-  catch(e){ err = e.message; rows = []; }
-
-  if (err){
-    resultEl.className='err';
-    resultEl.textContent = '⚠ SQL 오류: '+err+'\n(쿼리: '+raw+')';
-    renderHints();
-    return;
-  }
-
-  if (current.mode==='login'){
-    if (!rows.length){
-      resultEl.className='fail';
-      resultEl.textContent = '로그인 실패: 조건을 만족하는 사용자가 없습니다.';
-    } else {
-      const row = rows[0];
-      const normal = (vals.u===row.username && vals.p===row.password);
-      if (normal){
-        resultEl.className='ok';
-        resultEl.textContent = '정상 로그인 성공 ('+row.username+') — 이건 Injection이 아니라 그냥 맞는 비밀번호예요. 비밀번호 없이 우회할 방법을 찾아보세요.';
-      } else if (current.challenge){
-        resultEl.className='ok';
-        resultEl.textContent = '🏆 MISSION COMPLETE\n\n✓ SQL 구조 분석\n✓ 입력값 조작\n✓ 필터 우회\n✓ 방어 방식 확인\n\n'+row.username+' 계정으로 로그인 우회에 성공했습니다. SQL Injection 학습을 모두 마쳤습니다!';
-        getState(current.id).solved = true;
-        showExplain();
-        updateProgress();
-      } else {
-        resultEl.className='ok';
-        resultEl.textContent = '🎉 SQL Injection으로 로그인 우회 성공! ('+row.username+' 권한 획득)';
-        getState(current.id).solved = true;
-        showExplain();
-        updateProgress();
-      }
-    }
-  } else if (current.mode==='search'){
-    if (!rows.length){
-      resultEl.className='fail';
-      resultEl.textContent = '조회 결과 없음.';
-    } else if (rows.length===1 && String(vals.id).trim()===String(rows[0].id)){
-      resultEl.className='ok';
-      resultEl.textContent = '정상 조회: '+rows[0].name;
-    } else {
-      resultEl.className='ok';
-      resultEl.textContent = '🎉 SQL Injection 성공! 조건이 항상 참이 되어 '+rows.length+'개 상품이 한꺼번에 노출됨: '+rows.map(r=>r.name).join(', ');
-      getState(current.id).solved = true;
-      showExplain();
-      updateProgress();
-    }
-  }
-  renderHints();
-  renderTabs();
-});
-
-function showExplain(){
-  explainSec.style.display = 'block';
-  explainWhy.innerHTML = current.explain.why;
-  explainVuln.textContent = current.explain.vuln;
-  explainFixed.textContent = current.explain.fixed;
-}
-
-document.getElementById('resetBtn').addEventListener('click', ()=>{
-  current.fields.forEach(f=> document.getElementById('f_'+f.key).value='');
-  updatePreview();
-  resultEl.className=''; resultEl.textContent='';
-  if (!current.safe) explainSec.style.display='none';
-});
-
-// ===== defender quiz =====
-const QUIZ = [
-  { id:'A', code:"$query = \"SELECT * FROM products\n WHERE id=\" . $id;", correct:false,
-    why:"입력값이 그대로 쿼리에 이어 붙어서, 따옴표조차 필요 없는 숫자형 SQL Injection에 그대로 노출됩니다 (Lv.2와 동일한 구조)." },
-  { id:'B', code:"$query = \"SELECT * FROM users\n WHERE id='$id'\";", correct:false,
-    why:"따옴표로 감싸긴 했지만 여전히 문자열 연결 방식이라, 따옴표를 이용해 쿼리 구조를 깨는 SQL Injection에 취약합니다 (Lv.1과 동일한 구조)." },
-  { id:'C', code:"$stmt = $conn->prepare(\n \"SELECT * FROM products WHERE id=?\");\n$stmt->bind_param(\"i\", $id);\n$stmt->execute();", correct:true,
-    why:"SQL 구조(WHERE id=?)가 먼저 고정되고 입력값은 순수한 '값'으로만 바인딩되므로, 어떤 입력을 넣어도 쿼리 구조를 바꿀 수 없습니다 (Lv.4와 동일한 원리)." }
-];
-function renderQuiz(){
-  const el = document.getElementById('quizOptions');
-  el.innerHTML = '';
-  QUIZ.forEach(q=>{
-    const div = document.createElement('div');
-    div.className = 'quizOption';
-    div.innerHTML = '<div class="qlabel">'+q.id+'</div><pre>'+escapeHtml(q.code)+'</pre>';
-    div.onclick = ()=> selectQuiz(q.id);
-    el.appendChild(div);
-  });
-}
-function selectQuiz(id){
-  const chosen = QUIZ.find(q=>q.id===id);
-  const correctOne = QUIZ.find(q=>q.correct);
-  const resEl = document.getElementById('quizResult');
-  resEl.className=''; void resEl.offsetWidth;
-  document.querySelectorAll('.quizOption').forEach((el,idx)=>{
-    el.classList.remove('correct','wrong','reveal');
-    el.querySelectorAll('.mark').forEach(m=>m.remove());
-    void el.offsetWidth;
-    const q = QUIZ[idx];
-    const lab = el.querySelector('.qlabel');
-    if (q.id===id){
-      el.classList.add(chosen.correct ? 'correct' : 'wrong');
-      lab.insertAdjacentHTML('beforeend', '<span class="mark" style="color:'+(chosen.correct?'var(--success)':'var(--danger)')+'">'+(chosen.correct?'✓ 정답':'✗ 오답')+'</span>');
-    } else if (!chosen.correct && q.correct){
-      el.classList.add('reveal');
-      lab.insertAdjacentHTML('beforeend', '<span class="mark" style="color:var(--success)">← 정답</span>');
-    }
-  });
-  if (chosen.correct){
-    resEl.className = 'ok';
-    resEl.textContent = '✓ 정답입니다 ('+id+'). ' + chosen.why;
-  } else {
-    resEl.className = 'no';
-    resEl.textContent = '✗ 다시 생각해보세요 ('+id+'). '+chosen.why+' 정답은 '+correctOne.id+'입니다.';
-  }
-}
-renderQuiz();
-
-selectLevel('lv1');
-</script>
 </body>
 </html>
-

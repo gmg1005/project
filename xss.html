@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>XSS 실습실 — 보안 레벨별 데모</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12151c; --panel:#1a1f29; --border:#2a3142; --text:#e8e6e1; --muted:#8b93a5;
+    --accent:#e2a63c; --danger:#e2574c; --success:#4fb87d;
+    --mono:'IBM Plex Mono', ui-monospace, monospace; --sans:'Noto Sans KR', system-ui, sans-serif;
+    box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:inherit;}
+  html,body{background:var(--bg);}
+  body{margin:0; color:var(--text); font-family:var(--sans); line-height:1.6; padding:32px 18px 80px;}
+  .wrap{max-width:760px;margin:0 auto;}
+  header{margin-bottom:22px;}
+  h1{font-size:22px; margin:0 0 6px; font-weight:700; letter-spacing:-0.2px;}
+  .sub{color:var(--muted); font-size:14.5px; margin:0;}
+  .skiplink{display:inline-block; font-size:13px; color:var(--accent); text-decoration:none; font-family:var(--mono);}
+  .skiplink:hover{text-decoration:underline;}
+
+  .tabs{display:flex; gap:8px; flex-wrap:wrap; margin:20px 0 18px;}
+  .tab{font-family:var(--mono); font-size:13px; padding:8px 12px; border-radius:5px; border:1px solid var(--border); background:var(--panel); color:var(--muted); cursor:pointer;}
+  .tab.active{border-color:var(--accent); color:var(--accent); background:#241f14;}
+  .tab .chk{color:var(--success); margin-left:5px;}
+
+  section{background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:20px; margin-bottom:16px;}
+  section h2{font-size:15px; margin:0 0 10px; font-weight:700; display:flex; align-items:center; gap:8px;}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex:none;}
+  .theory p{font-size:14.5px; color:#cfd2da; margin:0 0 10px;}
+  pre{background:#0d1016; border:1px solid var(--border); border-radius:5px; padding:12px 14px; font-family:var(--mono); font-size:13px; color:#c9d6e3; overflow-x:auto; margin:0; line-height:1.55;}
+  .note{font-size:13px; color:var(--muted); margin-top:8px;}
+  ul.plain{margin:0; padding-left:18px; font-size:14px; color:#d7dae0;}
+  ul.plain li{margin-bottom:6px;}
+  .flow{font-family:var(--mono); font-size:12.5px; color:var(--muted); text-align:center; margin:10px 0;}
+
+  label{display:block; font-size:13px; color:var(--muted); margin:0 0 5px;}
+  input[type=text]{width:100%; background:#0d1016; border:1px solid var(--border); color:var(--text); font-family:var(--mono); font-size:14px; padding:9px 11px; border-radius:4px; margin-bottom:14px;}
+  input:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent);}
+  button{font-family:var(--sans); font-size:14px; font-weight:500; cursor:pointer; border-radius:4px; padding:9px 16px; border:1px solid var(--border); background:#242b39; color:var(--text);}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#1a1206; font-weight:700;}
+  button:disabled{opacity:0.4; cursor:not-allowed;}
+  button.ghost{background:transparent;}
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+
+  .preview-label{font-size:12.5px; color:var(--muted); margin:14px 0 6px;}
+  iframe#preview{width:100%; height:170px; border:1px solid var(--border); border-radius:4px; background:#fff;}
+
+  #result{margin-top:14px; font-size:14px; font-family:var(--mono); padding:10px 12px; border-radius:4px; display:none; white-space:pre-wrap;}
+  #result.ok{display:block; background:rgba(79,184,125,0.12); border:1px solid var(--success); color:var(--success);}
+  #result.fail{display:block; background:rgba(226,87,76,0.1); border:1px solid var(--danger); color:#f0a49e;}
+
+  .hint{border-top:1px solid var(--border); padding:12px 0; font-size:14px; color:#d7dae0;}
+  .hint:first-child{border-top:none; padding-top:0;}
+  .hint .htitle{font-size:12.5px; color:var(--muted); font-family:var(--mono); margin-bottom:4px;}
+  .locked{color:var(--muted); font-size:13.5px;}
+  .attempts{font-size:12.5px; color:var(--muted); font-family:var(--mono);}
+
+  #explain{display:none;}
+  #explain h2{color:var(--success);}
+  .codepair{display:grid; grid-template-columns:1fr; gap:12px;}
+  @media(min-width:600px){.codepair{grid-template-columns:1fr 1fr;}}
+  .codepair .lbl{font-size:12.5px; color:var(--muted); margin-bottom:6px; font-family:var(--mono);}
+
+  table{width:100%; border-collapse:collapse; font-size:13.5px; margin-top:4px;}
+  th,td{text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--muted); font-weight:600; font-family:var(--mono); font-size:12px;}
+  td{color:#d7dae0;}
+  .box{background:#0d1016; border:1px solid var(--border); border-radius:5px; padding:14px 16px; margin-top:10px;}
+  .box h3{font-size:13.5px; margin:0 0 6px; color:var(--accent);}
+
+  .quizOption{border:1px solid var(--border); border-radius:5px; padding:12px 14px; margin-bottom:10px; cursor:pointer; background:#0d1016;}
+  .quizOption:hover{border-color:var(--accent);}
+  .quizOption .qlabel{font-family:var(--mono); font-size:12.5px; color:var(--accent); margin-bottom:6px;}
+  .quizOption pre{background:transparent; border:none; padding:0; margin:0;}
+  .quizOption.correct{border-color:var(--success); background:rgba(79,184,125,.1);}
+  .quizOption.wrong{border-color:var(--danger); background:rgba(226,87,76,.1);}
+  .quizOption.reveal{border-color:var(--success); border-style:dashed;}
+  #quizResult{display:none; margin-top:12px; padding:10px 12px; border-radius:4px; font-size:14px; white-space:pre-wrap;}
+  #quizResult.ok{display:block; background:rgba(79,184,125,0.12); border:1px solid var(--success); color:var(--success);}
+  #quizResult.no{display:block; background:rgba(226,87,76,0.1); border:1px solid var(--danger); color:#f0a49e;}
+
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+  @keyframes pop{0%{transform:scale(.96)}50%{transform:scale(1.015)}100%{transform:scale(1)}}
+  #result.ok,#quizResult.ok{animation:pop .5s ease-out;}
+  #result.fail,#quizResult.no{animation:shake .4s ease-in-out;}
+  @media (prefers-reduced-motion: reduce){ #result,#quizResult,.quizOption{animation:none !important;} }
+
+  footer{text-align:center; color:var(--muted); font-size:12.5px; margin-top:30px;}
+  #practice{scroll-margin-top:16px;}
+
+  details.usage{background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:4px 16px; margin:14px 0 20px;}
+  details.usage summary{cursor:pointer; padding:12px 0; font-size:14px; font-weight:600; color:var(--accent); list-style:none;}
+  details.usage summary::-webkit-details-marker{display:none;}
+  details.usage summary::before{content:"▸ "; color:var(--muted);}
+  details.usage[open] summary::before{content:"▾ "; color:var(--muted);}
+  details.usage .usage-body{padding:0 0 14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="skiplink" href="index.html">← 허브로 돌아가기</a><br>
+    <h1 style="margin-top:12px;">XSS 실습실 — 보안 레벨별 데모</h1>
+    <p class="sub">사용자 입력이 필터링 없이 페이지에 그대로 삽입될 때 벌어지는 일을 직접 체험해보세요. 미리보기는 샌드박스 처리된 iframe이라 스크립트가 실제로 실행되지는 않지만, 실행됐을지 여부는 패턴으로 판정해서 알려줍니다.</p>
+    <a class="skiplink" href="#practice">기초 건너뛰고 바로 실습하기 →</a>
+  </header>
+
+  <details class="usage">
+    <summary>📖 이 페이지 사용법</summary>
+    <div class="usage-body">
+      <ul class="plain">
+        <li><b>렌더링 미리보기</b>는 샌드박스 처리된 iframe이라 어떤 스크립트를 입력해도 실제로 실행되지 않습니다. 대신 "실행됐을 패턴"을 감지해서 성공 여부를 알려줘요.</li>
+        <li>Lv.1은 입력 즉시 반영되는 <b>Reflected XSS</b>, Lv.2~4는 등록한 댓글이 계속 쌓이는 <b>Stored XSS</b> 구조입니다.</li>
+        <li><b>힌트</b>는 순서대로 열리고, 일정 횟수 이상 시도해야 다음 힌트가 열립니다.</li>
+        <li>탭(Lv.1~4, Challenge)은 자유롭게 이동 가능하지만 <b>Lv.1 → Lv.4 → Challenge</b> 순서를 권장합니다.</li>
+      </ul>
+    </div>
+  </details>
+
+  <section class="basics">
+    <h2><span class="dot"></span>XSS란?</h2>
+    <p style="margin:0;">Cross-Site Scripting(XSS)은 공격자가 입력한 HTML/JavaScript가 필터링 없이 다른 사용자의 브라우저에서 그대로 실행되는 취약점입니다. 세션 쿠키 탈취, 피싱 화면 삽입, 페이지 변조 등에 악용될 수 있습니다.</p>
+  </section>
+
+  <section class="basics">
+    <h2><span class="dot"></span>종류</h2>
+    <ul class="plain">
+      <li><b>Reflected XSS</b> — 입력값이 즉시, 그 페이지 응답에만 그대로 반영됨 (예: 검색 결과 페이지)</li>
+      <li><b>Stored XSS</b> — 입력값이 서버에 저장되었다가, 이후 그 페이지를 보는 모든 사용자에게 노출됨 (예: 댓글, 게시글)</li>
+      <li><b>DOM-based XSS</b> — 서버를 거치지 않고 브라우저 쪽 JS가 직접 입력값을 DOM에 반영할 때 발생 (이번 실습에서는 다루지 않습니다)</li>
+    </ul>
+  </section>
+
+  <section class="basics">
+    <h2><span class="dot"></span>입력값이 HTML에 들어가는 과정</h2>
+    <p>서버 코드는 보통 이런 식으로 입력값을 HTML 문자열에 직접 이어 붙입니다.</p>
+    <pre>echo "&lt;p&gt;검색어: " . $_GET['q'] . " 에 대한 결과가 없습니다.&lt;/p&gt;";</pre>
+    <p class="note" style="margin-bottom:10px;"><code>$_GET['q']</code> 자리에 무엇이 들어오든 그대로 HTML 문법의 일부가 됩니다.</p>
+    <div class="codepair">
+      <div>
+        <div class="lbl">정상 입력</div>
+        <pre>검색어: 노트북
+
+↓
+
+&lt;p&gt;검색어: 노트북
+ 에 대한 결과가 없습니다.&lt;/p&gt;</pre>
+      </div>
+      <div>
+        <div class="lbl">공격 입력</div>
+        <pre>검색어: &lt;script&gt;alert('XSS')&lt;/script&gt;
+
+↓
+
+&lt;p&gt;검색어: &lt;script&gt;alert('XSS')
+&lt;/script&gt; 에 대한 결과가...&lt;/p&gt;</pre>
+      </div>
+    </div>
+    <p class="note">오른쪽은 입력값 자체가 하나의 실행 가능한 태그가 되어, 브라우저가 이 페이지를 렌더링할 때 스크립트로 해석하고 실행해버립니다.</p>
+  </section>
+
+  <section class="basics">
+    <h2><span class="dot"></span>취약한 코드의 특징</h2>
+    <ul class="plain">
+      <li>사용자 입력을 이스케이프 없이 그대로 HTML에 출력한다</li>
+      <li>&lt;, &gt;, &quot;, ' 같은 HTML 특수문자를 엔티티로 변환하지 않는다</li>
+      <li>특정 태그(&lt;script&gt;)만 막으면 안전하다고 착각한다 (다른 태그/속성으로 우회 가능)</li>
+    </ul>
+    <p class="note" style="margin-top:10px;">특정 키워드를 막는 블랙리스트 방식은 보조적인 방어책일 뿐입니다. 근본적인 방어는 출력 시 <b>HTML 엔티티 인코딩(이스케이프)</b>을 하는 것입니다.</p>
+  </section>
+
+  <section class="basics">
+    <h2><span class="dot"></span>공격 원리 &amp; 방어 개요</h2>
+    <div class="flow">입력값 삽입 → 브라우저가 HTML/스크립트로 해석 → 공격자가 작성한 코드가 실행됨</div>
+    <p style="margin:0;">핵심 방어는 <b>출력 시 이스케이프(HTML Entity Encoding)</b>입니다. <code>&lt;</code>를 <code>&amp;lt;</code>로 바꾸면, 브라우저는 그걸 태그가 아니라 그냥 '글자'로 표시합니다. 자세한 대응표는 실습 후 정리 섹션에서 확인하세요.</p>
+  </section>
+
+  <div id="practice"></div>
+  <div class="attempts" id="progress" style="margin-bottom:10px;"></div>
+  <div class="tabs" id="tabs"></div>
+  <div class="note" style="margin:-10px 0 14px;">권장 순서: Lv.1 → Lv.2 → Lv.3 → Lv.4 → Challenge (순서대로 하지 않아도 자유롭게 이동할 수 있습니다)</div>
+
+  <section class="theory" id="theorySection">
+    <h2><span class="dot"></span><span id="theoryTitle"></span></h2>
+    <div id="theoryBody"></div>
+  </section>
+
+  <section>
+    <h2><span class="dot"></span>실습</h2>
+    <div id="fields"></div>
+    <div class="row">
+      <button class="primary" id="runBtn"></button>
+      <button class="ghost" id="resetBtn">입력창 초기화</button>
+      <span class="attempts" id="attemptsLabel"></span>
+    </div>
+    <div class="preview-label">렌더링 미리보기 (스크립트는 안전하게 차단된 샌드박스입니다)</div>
+    <iframe id="preview" sandbox="" title="렌더링 미리보기"></iframe>
+    <div id="result"></div>
+  </section>
+
+  <section>
+    <h2><span class="dot"></span>힌트</h2>
+    <div id="hints"></div>
+  </section>
+
+  <section id="explain">
+    <h2><span class="dot"></span>해설</h2>
+    <p id="explainWhy" style="font-size:14.5px;color:#cfd2da;"></p>
+    <div class="codepair" style="margin-top:14px;">
+      <div><div class="lbl">취약한 코드</div><pre id="explainVuln"></pre></div>
+      <div><div class="lbl">고친 코드</div><pre id="explainFixed"></pre></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="dot"></span>방어자 퀴즈 — 안전한 코드 고르기</h2>
+    <p class="note" style="margin:0 0 12px;">다음 세 가지 코드 중 XSS를 올바르게 방어한 것은 무엇일까요?</p>
+    <div id="quizOptions"></div>
+    <div id="quizResult"></div>
+  </section>
+
+  <section>
+    <h2><span class="dot"></span>정리 — 공격 유형과 방어</h2>
+    <p style="font-size:14px;color:#b9bdc6;margin:0 0 12px;">🎉 여기까지 오셨다면 XSS의 핵심 원리와 방어법을 한 바퀴 다 둘러본 거예요.</p>
+    <table>
+      <tr><th>취약점</th><th>문제</th><th>방어</th></tr>
+      <tr><td>Reflected XSS (Lv.1)</td><td>입력값이 그대로 응답 페이지에 출력됨</td><td>출력 시 HTML 이스케이프</td></tr>
+      <tr><td>Stored XSS (Lv.2)</td><td>저장된 입력이 모든 열람자에게 노출됨</td><td>저장/출력 시 이스케이프 + CSP</td></tr>
+      <tr><td>블랙리스트 필터 (Lv.3)</td><td>특정 태그만 막아도 다른 속성/태그로 우회됨</td><td>화이트리스트가 아닌 이스케이프 자체를 신뢰</td></tr>
+    </table>
+    <p class="note" style="margin-top:10px;">가장 근본적인 해법은 <b>출력 시 HTML 엔티티 인코딩</b>입니다. Lv.4에서 확인했듯, 입력값이 태그로 해석되지 않는 순간 어떤 페이로드를 넣어도 안전합니다.</p>
+    <div class="box">
+      <h3>심화: XSS가 뚫려도 피해를 줄이는 방법</h3>
+      <ul class="plain" style="font-size:13.5px;">
+        <li><b>CSP(Content-Security-Policy)</b> — 허용된 출처의 스크립트만 실행되도록 브라우저 차원에서 제한</li>
+        <li><b>쿠키에 HttpOnly 속성</b> — XSS가 성공해도 JavaScript로 쿠키(세션)를 읽어가지 못하게 함</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>이 데모는 학습용 시뮬레이션입니다 · 스크립트는 샌드박스 iframe 안에서 절대 실제 실행되지 않습니다</footer>
+</div>
+
+<script>
+function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function detectExecuted(html){
+  return /<script[\s>]/i.test(html) || /on\w+\s*=/i.test(html) || /javascript:/i.test(html);
+}
+function wrapPreview(inner){
+  return '<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:system-ui,sans-serif;margin:12px;color:#111;font-size:14px;}.comment{padding:6px 0;border-bottom:1px solid #eee;}</style></head><body>'+inner+'</body></html>';
+}
+
+const LEVELS = [
+  {
+    id:'lv1', tab:'Lv.1 Reflected XSS', short:'Lv.1', diff:'Easy', mode:'reflected', actionLabel:'검색',
+    fields:[{key:'q',label:'검색어',ph:'검색어를 입력하세요'}],
+    theoryTitle:'검색어가 그대로 페이지에 반영됩니다',
+    theoryHtml:"<p>검색 결과 페이지가 검색어를 이스케이프 없이 그대로 HTML에 삽입합니다.</p><pre>&lt;p&gt;검색어: {입력값} 에 대한 결과가 없습니다.&lt;/p&gt;</pre><p class='note'>HTML 태그를 넣으면 실제로 렌더링되는지 아래 미리보기에서 확인해보세요.</p>",
+    buildHtml:(q)=> '<p>검색어: '+q+' 에 대한 결과가 없습니다.</p>',
+    hints:[
+      "검색어가 그대로 페이지에 삽입됩니다. 미리보기 박스에서 입력이 어떻게 렌더링되는지 관찰해보세요.",
+      "<b>굵게</b> 같은 평범한 HTML 태그를 넣어보세요. 실제로 굵게 표시되나요? 그렇다면 이스케이프가 전혀 안 되고 있다는 뜻입니다.",
+      "이제 스크립트를 실행하는 태그를 넣어보세요. 이 시뮬레이터는 실제로 코드를 실행하지 않고, 실행됐을 패턴만 판정합니다.",
+      "정답 예시: <script>alert('XSS')<\/script>"
+    ],
+    explain:{
+      why:"검색어를 이스케이프 없이 그대로 HTML에 삽입했기 때문에, &lt;script&gt; 태그가 '글자'가 아니라 실제 태그로 해석되어 실행 가능한 상태가 되었습니다.",
+      vuln:"echo \"<p>검색어: \" . $_GET['q']\n   . \" 에 대한 결과가 없습니다.</p>\";",
+      fixed:"echo \"<p>검색어: \"\n  . htmlspecialchars($_GET['q'], ENT_QUOTES)\n  . \" 에 대한 결과가 없습니다.</p>\";"
+    }
+  },
+  {
+    id:'lv2', tab:'Lv.2 Stored XSS', short:'Lv.2', diff:'Easy-Medium', mode:'stored', actionLabel:'댓글 등록',
+    fields:[{key:'c',label:'댓글',ph:'댓글을 입력하세요'}],
+    theoryTitle:'댓글이 저장되었다가 모든 사람에게 보여집니다',
+    theoryHtml:"<p>이 댓글판은 작성한 댓글을 저장했다가, 페이지를 보는 모두에게 그대로 렌더링해서 보여줍니다.</p><p class='note'>Reflected XSS와 다른 점: 한 번 등록하면 이후 그 페이지를 여는 모든 사람에게 영향을 줍니다.</p>",
+    hints:[
+      "댓글을 입력하고 등록한 뒤, 게시판에 어떻게 표시되는지 확인해보세요.",
+      "평범한 텍스트 대신 HTML 태그를 댓글에 넣어보면 어떻게 될까요?",
+      "Reflected 때와 똑같은 스크립트 태그를 댓글로 등록해보세요.",
+      "정답 예시: <script>alert('Stored XSS')<\/script> 를 댓글로 등록해보세요."
+    ],
+    explain:{
+      why:"댓글을 저장하고 출력하는 과정 어디에서도 이스케이프를 하지 않았기 때문에, 한 번 등록된 스크립트가 이 게시판을 보는 모든 사용자의 브라우저에서 실행될 수 있습니다.",
+      vuln:"$comments[] = $_POST['c']; // 그대로 저장\nforeach ($comments as $c) echo \"<div>$c</div>\";",
+      fixed:"$comments[] = $_POST['c']; // 저장은 그대로 해도\nforeach ($comments as $c)\n  echo \"<div>\".htmlspecialchars($c).\"</div>\"; // 출력 시 이스케이프"
+    }
+  },
+  {
+    id:'lv3', tab:'Lv.3 필터 우회', short:'Lv.3', diff:'Medium', mode:'stored', actionLabel:'댓글 등록',
+    filter:(s)=> s.replace(/script/gi,''),
+    fields:[{key:'c',label:'댓글',ph:'댓글을 입력하세요'}],
+    theoryTitle:'script라는 단어를 걸러내는 필터가 있습니다',
+    theoryHtml:"<p>이번 댓글판은 입력값에서 <code>script</code>라는 단어를 대소문자 구분 없이 제거합니다.</p><pre>input = input.replace(/script/gi, '')</pre><p class='note'>&lt;script&gt; 태그 하나만 막는다고 스크립트를 실행하는 모든 방법이 막히는 건 아닙니다.</p>",
+    hints:[
+      "<script> 태그를 그대로 쓰면 필터에 의해 사라집니다. 미리보기에서 확인해보세요.",
+      "스크립트를 실행하는 방법이 &lt;script&gt; 태그 하나만 있는 건 아닙니다. 다른 태그의 '이벤트 속성'(예: 이미지가 로드되지 못했을 때 실행되는 속성)을 떠올려보세요.",
+      "이미지 태그를 하나 만들고, 일부러 잘못된 경로를 줘서 로드가 실패하게 만들면 그 실패 시점에 실행되는 속성이 있습니다.",
+      "정답 예시: <img src=\"x\" onerror=\"alert('XSS')\">"
+    ],
+    explain:{
+      why:"필터는 'script'라는 단어만 찾아서 지울 뿐, &lt;img onerror=...&gt;처럼 스크립트를 실행하는 다른 방법은 전혀 막지 못합니다. 특정 키워드·태그만 막는 블랙리스트 필터링의 전형적인 약점입니다.",
+      vuln:"$c = str_ireplace('script','',$_POST['c']);\necho \"<div>$c</div>\";",
+      fixed:"// 블랙리스트 대신 이스케이프 자체를 사용\necho \"<div>\".htmlspecialchars($_POST['c']).\"</div>\";"
+    }
+  },
+  {
+    id:'lv4', tab:'Lv.4 패치된 버전', short:'Lv.4', diff:'Safe', safe:true, mode:'stored', actionLabel:'댓글 등록',
+    fields:[{key:'c',label:'댓글',ph:'댓글을 입력하세요'}],
+    theoryTitle:'이 레벨은 패치되어 있습니다',
+    theoryHtml:"<p>출력 시 HTML 특수문자를 엔티티로 변환합니다.</p><pre>&lt;  →  &amp;lt;\n&gt;  →  &amp;gt;\n\"  →  &amp;quot;</pre><p class='note'>아무 태그나 자유롭게 입력해보고, 태그가 실행되지 않고 '글자 그대로' 표시되는 걸 확인해보세요.</p>",
+    hints:[],
+    explain:{
+      why:"htmlspecialchars() 같은 이스케이프 함수는 &lt;, &gt; 같은 HTML 특수문자를 엔티티 코드로 바꿔버립니다. 브라우저는 엔티티 코드를 태그가 아니라 '화면에 보여줄 글자'로 처리하기 때문에, 어떤 입력을 넣어도 코드로 실행될 수 없습니다.",
+      vuln:"// Lv.2 방식 (취약)\necho \"<div>$c</div>\";",
+      fixed:"echo \"<div>\".htmlspecialchars($c, ENT_QUOTES).\"</div>\";"
+    }
+  },
+  {
+    id:'challenge', tab:'🧪 Challenge', short:'Challenge', diff:'Final', challenge:true, mode:'stored', actionLabel:'댓글 등록',
+    filter:(s)=> s.replace(/script/gi,''),
+    fields:[{key:'c',label:'댓글',ph:'댓글을 입력하세요'}],
+    theoryTitle:'종합 실습 — 힌트 없이 도전',
+    theoryHtml:"<p>지금까지 배운 걸 직접 조합해볼 차례입니다. 이 댓글판에는 <b>script 필터</b>가 걸려 있습니다.</p><p class='note'>목표: 댓글 등록만으로 <b>경고창을 띄우는 스크립트를 실행</b>시키기. 힌트는 제공되지 않습니다.</p>",
+    hints:[],
+    explain:{
+      why:"script 필터를 우회하면서 동시에 실행 가능한 코드를 만들어야 했습니다 — Lv.3에서 배운 '다른 벡터로 우회하기'를 힌트 없이 스스로 적용한 것입니다.",
+      vuln:"$c = str_ireplace('script','',$_POST['c']);\necho \"<div>$c</div>\";",
+      fixed:"이스케이프를 사용하면 필터링 로직과 무관하게 이런 공격 자체가 원천적으로 통하지 않습니다."
+    }
+  }
+];
+
+const state = {};
+function getState(id){ return state[id] || (state[id]={attempts:0, unlocked:1, solved:false, comments:[]}); }
+let current = LEVELS[0];
+
+const tabsEl = document.getElementById('tabs');
+const theoryTitleEl = document.getElementById('theoryTitle');
+const theoryBodyEl = document.getElementById('theoryBody');
+const fieldsEl = document.getElementById('fields');
+const previewFrame = document.getElementById('preview');
+const resultEl = document.getElementById('result');
+const hintsEl = document.getElementById('hints');
+const attemptsLabel = document.getElementById('attemptsLabel');
+const explainSec = document.getElementById('explain');
+const explainWhy = document.getElementById('explainWhy');
+const explainVuln = document.getElementById('explainVuln');
+const explainFixed = document.getElementById('explainFixed');
+const runBtn = document.getElementById('runBtn');
+
+function currentVal(){
+  return document.getElementById('f_'+current.fields[0].key).value;
+}
+function renderPreview(){
+  let html;
+  if (current.mode === 'reflected'){
+    html = current.buildHtml(currentVal());
+  } else {
+    const list = getState(current.id).comments;
+    html = list.length ? list.map(c=>'<div class="comment">'+c+'</div>').join('') : '<p style="color:#999;">(아직 댓글이 없습니다)</p>';
+  }
+  previewFrame.srcdoc = wrapPreview(html);
+}
+
+function updateProgress(){
+  const total = LEVELS.length;
+  let solved = 0;
+  const parts = LEVELS.map(lv=>{
+    const done = getState(lv.id).solved;
+    if (done) solved++;
+    return (lv.short||lv.tab) + (done ? ' ✓' : ' ○');
+  });
+  document.getElementById('progress').textContent = '학습 진행도: ' + parts.join('  ') + '  ·  진행률 ' + Math.round(solved/total*100) + '%';
+}
+
+function renderTabs(){
+  tabsEl.innerHTML = '';
+  LEVELS.forEach(lv=>{
+    const b = document.createElement('div');
+    b.className = 'tab' + (lv.id===current.id ? ' active' : '');
+    b.innerHTML = lv.tab + (getState(lv.id).solved ? '<span class="chk">✓</span>' : '');
+    b.onclick = ()=> selectLevel(lv.id);
+    tabsEl.appendChild(b);
+  });
+}
+
+function selectLevel(id){
+  current = LEVELS.find(l=>l.id===id);
+  theoryTitleEl.textContent = current.theoryTitle;
+  theoryBodyEl.innerHTML = current.theoryHtml;
+  fieldsEl.innerHTML = '';
+  current.fields.forEach(f=>{
+    const lab = document.createElement('label'); lab.textContent = f.label; lab.setAttribute('for','f_'+f.key);
+    const inp = document.createElement('input'); inp.type='text'; inp.id='f_'+f.key; inp.placeholder=f.ph;
+    inp.autocomplete='off'; inp.spellcheck=false;
+    if (current.mode==='reflected') inp.addEventListener('input', renderPreview);
+    fieldsEl.appendChild(lab); fieldsEl.appendChild(inp);
+  });
+  runBtn.textContent = current.actionLabel;
+  resultEl.className=''; resultEl.textContent='';
+  explainSec.style.display = current.safe ? 'block' : 'none';
+  if (current.safe){
+    explainWhy.innerHTML = current.explain.why;
+    explainVuln.textContent = current.explain.vuln;
+    explainFixed.textContent = current.explain.fixed;
+  }
+  renderPreview();
+  renderHints();
+  renderTabs();
+  const st = getState(current.id);
+  attemptsLabel.textContent = '시도 횟수: ' + st.attempts;
+  updateProgress();
+}
+
+function renderHints(){
+  const st = getState(current.id);
+  hintsEl.innerHTML = '';
+  if (current.hints.length===0){
+    const msg = current.challenge
+      ? '이 레벨은 힌트가 제공되지 않습니다 — 지금까지 배운 걸 직접 적용해보세요.'
+      : '이 레벨은 힌트가 필요 없습니다 — 자유롭게 시도해보세요.';
+    hintsEl.innerHTML = '<p class="locked">'+msg+'</p>';
+    return;
+  }
+  current.hints.forEach((text,i)=>{
+    const div = document.createElement('div'); div.className='hint';
+    if (i < st.unlocked){
+      div.innerHTML = '<div class="htitle">힌트 '+(i+1)+'</div>'+text.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    } else if (i === st.unlocked){
+      const need = i;
+      const can = st.attempts >= need;
+      div.innerHTML = '<div class="htitle">힌트 '+(i+1)+'</div>';
+      const btn = document.createElement('button');
+      btn.textContent = can ? '힌트 보기' : ('먼저 '+(need-st.attempts)+'번 더 시도해보세요');
+      btn.disabled = !can;
+      btn.onclick = ()=>{ st.unlocked++; renderHints(); };
+      div.appendChild(btn);
+    } else {
+      div.innerHTML = '<span class="locked">잠김</span>';
+    }
+    hintsEl.appendChild(div);
+  });
+}
+
+function showExplain(){
+  explainSec.style.display = 'block';
+  explainWhy.innerHTML = current.explain.why;
+  explainVuln.textContent = current.explain.vuln;
+  explainFixed.textContent = current.explain.fixed;
+}
+
+runBtn.addEventListener('click', ()=>{
+  resultEl.className=''; void resultEl.offsetWidth;
+  const st = getState(current.id);
+  st.attempts++;
+  attemptsLabel.textContent = '시도 횟수: ' + st.attempts;
+
+  const raw = currentVal();
+  let processed = raw;
+  if (current.filter) processed = current.filter(processed);
+  if (current.safe) processed = escapeHtml(processed);
+
+  let finalHtml;
+  if (current.mode === 'reflected'){
+    finalHtml = current.buildHtml(processed);
+  } else {
+    st.comments.push(processed);
+    finalHtml = st.comments.map(c=>'<div class="comment">'+c+'</div>').join('');
+  }
+  previewFrame.srcdoc = wrapPreview(finalHtml);
+
+  const hasTag = /[<>]/.test(raw);
+  const executed = detectExecuted(current.mode==='reflected' ? finalHtml : processed);
+
+  if (current.safe){
+    resultEl.className='ok';
+    resultEl.textContent = hasTag
+      ? '댓글이 등록되었습니다. 태그가 글자 그대로 표시될 뿐, 코드로는 실행되지 않습니다. 이스케이프 덕분에 어떤 입력을 넣어도 안전합니다.'
+      : '댓글이 등록되었습니다. (평범한 텍스트 댓글)';
+    if (hasTag){ getState(current.id).solved = true; updateProgress(); renderTabs(); }
+  } else if (executed){
+    resultEl.className='ok';
+    if (current.challenge){
+      resultEl.textContent = '🏆 MISSION COMPLETE\n\n✓ 취약한 출력 구조 분석\n✓ 필터 우회 벡터 탐색\n✓ 스크립트 실행 성공\n\nXSS 학습을 모두 마쳤습니다!';
+    } else {
+      resultEl.textContent = (current.mode==='reflected' ? '🎉 Reflected XSS 성공! ' : '🎉 Stored XSS 성공! ') + '스크립트가 실행되는 패턴이 감지되었습니다. (alert 창이 뜬 것으로 간주합니다)';
+    }
+    getState(current.id).solved = true;
+    showExplain();
+    updateProgress();
+    renderTabs();
+  } else if (hasTag){
+    resultEl.className='fail';
+    resultEl.textContent = '태그를 넣긴 했지만 필터링되었거나 실행 가능한 패턴이 아닙니다. 다른 방법을 시도해보세요.';
+  } else {
+    resultEl.className='ok';
+    resultEl.textContent = current.mode==='reflected'
+      ? '검색어가 그대로 반영되었습니다. 아직 특수한 입력은 넣지 않았어요.'
+      : '댓글이 등록되었습니다. (평범한 텍스트 댓글)';
+  }
+  renderHints();
+});
+
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  current.fields.forEach(f=> document.getElementById('f_'+f.key).value='');
+  resultEl.className=''; resultEl.textContent='';
+  renderPreview();
+});
+
+// ===== defender quiz =====
+const QUIZ = [
+  { id:'A', code:"echo \"<p>\" . $_GET['q'] . \"</p>\";", correct:false,
+    why:"입력값이 전혀 처리되지 않고 그대로 출력되어, 어떤 태그를 넣어도 실행됩니다 (Lv.1과 동일한 구조)." },
+  { id:'B', code:"echo \"<p>\" . strip_tags($_GET['q']) . \"</p>\";", correct:false,
+    why:"strip_tags()는 태그 자체를 지우려고 시도하지만 구현이 완벽하지 않아 변형된 입력으로 우회되는 사례가 알려져 있습니다. 근본적인 방어로는 부족합니다." },
+  { id:'C', code:"echo \"<p>\"\n . htmlspecialchars($_GET['q'], ENT_QUOTES)\n . \"</p>\";", correct:true,
+    why:"HTML 특수문자를 엔티티로 인코딩하므로, 입력값이 어떤 내용이든 태그로 해석되지 않고 그대로 문자로 표시됩니다 (Lv.4와 동일한 원리)." }
+];
+function renderQuiz(){
+  const el = document.getElementById('quizOptions');
+  el.innerHTML = '';
+  QUIZ.forEach(q=>{
+    const div = document.createElement('div');
+    div.className = 'quizOption';
+    div.innerHTML = '<div class="qlabel">'+q.id+'</div><pre>'+q.code.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</pre>';
+    div.onclick = ()=> selectQuiz(q.id);
+    el.appendChild(div);
+  });
+}
+function selectQuiz(id){
+  const chosen = QUIZ.find(q=>q.id===id);
+  const correctOne = QUIZ.find(q=>q.correct);
+  const resEl = document.getElementById('quizResult');
+  resEl.className=''; void resEl.offsetWidth;
+  document.querySelectorAll('.quizOption').forEach((el,idx)=>{
+    el.classList.remove('correct','wrong','reveal');
+    el.querySelectorAll('.mark').forEach(m=>m.remove());
+    const q = QUIZ[idx];
+    const lab = el.querySelector('.qlabel');
+    if (q.id===id){
+      el.classList.add(chosen.correct ? 'correct' : 'wrong');
+      lab.insertAdjacentHTML('beforeend', '<span class="mark" style="margin-left:8px;color:'+(chosen.correct?'var(--success)':'var(--danger)')+'">'+(chosen.correct?'✓ 정답':'✗ 오답')+'</span>');
+    } else if (!chosen.correct && q.correct){
+      el.classList.add('reveal');
+      lab.insertAdjacentHTML('beforeend', '<span class="mark" style="margin-left:8px;color:var(--success)">← 정답</span>');
+    }
+  });
+  if (chosen.correct){ resEl.className='ok'; resEl.textContent = '✓ 정답입니다 ('+id+'). ' + chosen.why; }
+  else { resEl.className='no'; resEl.textContent = '✗ 다시 생각해보세요 ('+id+'). '+chosen.why+' 정답은 '+correctOne.id+'입니다.'; }
+}
+renderQuiz();
+
+selectLevel('lv1');
+</script>
+</body>
+</html>
