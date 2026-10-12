@@ -10,7 +10,7 @@
 | 영역 | 상태 |
 |---|---|
 | 백엔드 API (SQLi Lv.1~4 + Challenge, XSS Lv.1~4 + Challenge) | ✅ 전부 구현 + curl 테스트 완료 |
-| 프론트엔드 연동 (`sqli.html`) | Lv.1만 연동됨. Lv.2~4, Challenge는 **B가 작업** |
+| 프론트엔드 연동 (`sqli.html`) | ✅ Lv.1~4, Challenge 전부 연동 완료 |
 | 프론트엔드 연동 (`xss.html`) | 아직 연동 안 됨. **C가 작업** |
 | GitHub 연동 배포 | 아직 시작 안 함 |
 
@@ -21,7 +21,7 @@ API 전체 명세는 **[API.md](./API.md)** 참고 — 경로, 요청/응답 형
 ```
 sqli-lab/
 ├── index.html    ← 허브 페이지
-├── sqli.html     ← SQL Injection 실습 (Lv.1만 백엔드 연동됨)
+├── sqli.html     ← SQL Injection 실습 (전체 백엔드 연동됨)
 ├── xss.html      ← XSS 실습 (아직 시뮬레이션 모드만)
 ├── API.md        ← 전체 API 명세서 (B, C가 보고 연동하면 됨)
 ├── backend/
@@ -84,7 +84,7 @@ curl -X POST http://localhost:3000/api/xss/lv3/comments \
 
 ## 다음 할 일
 
-- [ ] (B) `sqli.html` Lv.2~4, Challenge를 API.md 보고 `fetch` 연동 — Lv.1 코드 패턴 그대로 복사해서 경로만 바꾸면 됨
+- [x] `sqli.html` Lv.2~4, Challenge를 API.md 보고 `fetch` 연동 — Lv.1 패턴 재사용, 레벨별 성공 판정까지 반영
 - [ ] (C) `xss.html` Lv.1~4, Challenge를 API.md 보고 `fetch` 연동
 - [ ] SQLite를 메모리(`:memory:`) 대신 파일로 바꿔서 재시작해도 데이터 유지 (선택)
 - [ ] `backend/`를 GitHub에 올리고 Render 등에 연결해서 실제 배포
@@ -92,7 +92,7 @@ curl -X POST http://localhost:3000/api/xss/lv3/comments \
 ## 각 모듈 수정 포인트
 
 ### sqli.html / xss.html
-- `LEVELS` 배열 — 레벨별 이론/힌트/로직/해설. `backend` 필드가 있으면 그 레벨은 실제 서버로 요청을 보냅니다 (지금은 SQLi Lv.1에만 있음 — 다른 레벨에도 이 필드와 fetch 로직을 추가하면 됩니다).
+- `LEVELS` 배열 — 레벨별 이론/힌트/로직/해설. `backend` 필드가 있으면 그 레벨은 실제 서버로 요청을 보냅니다 (SQLi는 Lv.1~4, Challenge 전체에 적용됨).
 - `tokenize()` / `parseWhere()` / `evalBool()` (sqli.html) — 시뮬레이션 모드에서 쓰는 자체 SQL 파서
 - `detectExecuted()` (xss.html) — XSS 실행 여부를 판정하는 패턴 규칙
 

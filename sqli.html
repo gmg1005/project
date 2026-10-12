@@ -368,7 +368,7 @@ function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 // ===== level definitions =====
 const LEVELS = [
   {
-    id:'lv1', tab:'Lv.1 로그인 우회', short:'Lv.1', diff:'Easy', backend:'/api/sqli/lv1',
+    id:'lv1', tab:'Lv.1 로그인 우회', short:'Lv.1', diff:'Easy', backend:'/api/sqli/lv1/vulnerable',
     fields:[{key:'u',label:'아이디',ph:'username'},{key:'p',label:'비밀번호',ph:'password'}],
     theoryTitle:'왜 취약한가',
     theoryHtml:"<p>입력값을 검증 없이 그대로 쿼리에 이어 붙입니다.</p><pre>SELECT * FROM users\nWHERE username='{아이디}' AND password='{비밀번호}'</pre><p class='note'>따옴표(')를 넣으면 쿼리 구조 자체가 바뀔 수 있습니다.</p><p class='note' id='sqli-backend-note'>이 레벨은 backend 서버가 켜져 있으면 <b>진짜 SQLite</b>에 쿼리를 실행합니다. 꺼져 있으면 자동으로 브라우저 시뮬레이션으로 동작해요.</p>",
@@ -387,10 +387,10 @@ const LEVELS = [
     }
   },
   {
-    id:'lv2', tab:'Lv.2 숫자형 검색', short:'Lv.2', diff:'Easy-Medium',
+    id:'lv2', tab:'Lv.2 숫자형 검색', short:'Lv.2', diff:'Easy-Medium', backend:'/api/sqli/lv2/vulnerable',
     fields:[{key:'id',label:'상품 ID',ph:'예: 1'}],
     theoryTitle:'숫자형 파라미터는 따옴표가 없다',
-    theoryHtml:"<p>이 조회창은 숫자를 그대로 쿼리에 넣습니다. 따옴표가 아예 없어서 문자열 이스케이프와는 다른 접근이 필요합니다.</p><pre>SELECT * FROM products WHERE id={상품ID}</pre><p class='note'>따옴표가 없어도 조건식 자체를 조작하면 됩니다.</p>",
+    theoryHtml:"<p>이 조회창은 숫자를 그대로 쿼리에 넣습니다. 따옴표가 아예 없어서 문자열 이스케이프와는 다른 접근이 필요합니다.</p><pre>SELECT * FROM products WHERE id={상품ID}</pre><p class='note'>따옴표가 없어도 조건식 자체를 조작하면 됩니다.</p><p class='note'>이 레벨은 backend 서버가 켜져 있으면 <b>진짜 SQLite</b>에 쿼리를 실행합니다. 꺼져 있으면 자동으로 브라우저 시뮬레이션으로 동작해요.</p>",
     buildQuery:(v)=> "SELECT * FROM products WHERE id="+v.id,
     db: PRODUCTS, mode:'search',
     hints:[
@@ -406,10 +406,10 @@ const LEVELS = [
     }
   },
   {
-    id:'lv3', tab:'Lv.3 필터 우회', short:'Lv.3', diff:'Medium',
+    id:'lv3', tab:'Lv.3 필터 우회', short:'Lv.3', diff:'Medium', backend:'/api/sqli/lv3/vulnerable',
     fields:[{key:'u',label:'아이디',ph:'username'},{key:'p',label:'비밀번호',ph:'password'}],
     theoryTitle:'필터가 있다고 안전한 건 아니다',
-    theoryHtml:"<p>이번 로그인 폼은 입력값에서 <code>OR</code>이라는 문자열을 대소문자 구분 없이 전부 제거합니다.</p><pre>input = input.replace(/or/gi, '')</pre><p class='note'>입력값에서 특정 키워드를 지우는 이런 <b>블랙리스트 방식</b>은, 지운 것처럼 보여도 SQL Injection을 안전하게 막지 못합니다. 왜 그런지 직접 확인해보세요.</p>",
+    theoryHtml:"<p>이번 로그인 폼은 입력값에서 <code>OR</code>이라는 문자열을 대소문자 구분 없이 전부 제거합니다.</p><pre>input = input.replace(/or/gi, '')</pre><p class='note'>입력값에서 특정 키워드를 지우는 이런 <b>블랙리스트 방식</b>은, 지운 것처럼 보여도 SQL Injection을 안전하게 막지 못합니다. 왜 그런지 직접 확인해보세요.</p><p class='note'>이 레벨은 backend 서버가 켜져 있으면 <b>진짜 SQLite</b>에 쿼리를 실행합니다. 꺼져 있으면 자동으로 브라우저 시뮬레이션으로 동작해요.</p>",
     buildQuery:(v)=> "SELECT * FROM users WHERE username='"+v.u.replace(/or/gi,'')+"' AND password='"+v.p.replace(/or/gi,'')+"'",
     db: USERS, mode:'login',
     hints:[
@@ -425,10 +425,10 @@ const LEVELS = [
     }
   },
   {
-    id:'lv4', tab:'Lv.4 패치된 버전', short:'Lv.4', diff:'Safe', safe:true,
+    id:'lv4', tab:'Lv.4 패치된 버전', short:'Lv.4', diff:'Safe', safe:true, backend:'/api/sqli/lv4',
     fields:[{key:'u',label:'아이디',ph:'username'},{key:'p',label:'비밀번호',ph:'password'}],
     theoryTitle:'이 레벨은 패치되어 있습니다',
-    theoryHtml:"<p>Prepared Statement는 SQL '구조'와 입력 '값'을 미리 분리합니다. 구조는 절대 바뀌지 않고, 입력값은 그 안에 문자열 그대로 끼워질 뿐 SQL 문법으로는 해석되지 않습니다.</p><pre>SELECT * FROM users\nWHERE username = ?\n  AND password = ?</pre><p class='note'>아무 페이로드나 자유롭게 시도해보고, 아래 미리보기에서 구조와 값이 어떻게 분리되는지 관찰해보세요.</p>",
+    theoryHtml:"<p>Prepared Statement는 SQL '구조'와 입력 '값'을 미리 분리합니다. 구조는 절대 바뀌지 않고, 입력값은 그 안에 문자열 그대로 끼워질 뿐 SQL 문법으로는 해석되지 않습니다.</p><pre>SELECT * FROM users\nWHERE username = ?\n  AND password = ?</pre><p class='note'>아무 페이로드나 자유롭게 시도해보고, 아래 미리보기에서 구조와 값이 어떻게 분리되는지 관찰해보세요.</p><p class='note'>이 레벨은 backend 서버가 켜져 있으면 <b>진짜 Prepared Statement</b>로 실행됩니다. 꺼져 있으면 자동으로 브라우저 시뮬레이션으로 동작해요.</p>",
     buildQuery:(v)=> "SQL 구조 (고정, 절대 바뀌지 않음)\nSELECT * FROM users WHERE username=? AND password=?\n\n바인딩되는 값 (SQL 문법이 아닌 순수 문자열로만 취급됨)\n  username → \""+v.u+"\"\n  password → \""+v.p+"\"",
     db: USERS, mode:'safe',
     hints:[],
@@ -439,10 +439,10 @@ const LEVELS = [
     }
   },
   {
-    id:'challenge', tab:'🧪 Challenge', short:'Challenge', diff:'Final', challenge:true,
+    id:'challenge', tab:'🧪 Challenge', short:'Challenge', diff:'Final', challenge:true, backend:'/api/sqli/challenge/vulnerable',
     fields:[{key:'u',label:'아이디',ph:'username'},{key:'p',label:'비밀번호',ph:'password'}],
     theoryTitle:'종합 실습 — 힌트 없이 도전',
-    theoryHtml:"<p>지금까지 배운 걸 직접 조합해볼 차례입니다. 이 로그인 폼에는 <b>OR 필터</b>가 걸려 있습니다.</p><p class='note'>목표: <b>admin 계정으로 로그인 우회하기</b>. 이번엔 힌트가 제공되지 않습니다.</p>",
+    theoryHtml:"<p>지금까지 배운 걸 직접 조합해볼 차례입니다. 이 로그인 폼에는 <b>OR 필터</b>가 걸려 있습니다.</p><p class='note'>목표: <b>admin 계정으로 로그인 우회하기</b>. 이번엔 힌트가 제공되지 않습니다.</p><p class='note'>이 레벨은 backend 서버가 켜져 있으면 <b>진짜 SQLite</b>에 쿼리를 실행합니다. 꺼져 있으면 자동으로 브라우저 시뮬레이션으로 동작해요.</p>",
     buildQuery:(v)=> "SELECT * FROM users WHERE username='"+v.u.replace(/or/gi,'')+"' AND password='"+v.p.replace(/or/gi,'')+"'",
     db: USERS, mode:'login',
     hints:[],
@@ -572,26 +572,63 @@ document.getElementById('runBtn').addEventListener('click', async ()=>{
     resultEl.className=''; resultEl.style.display='block';
     resultEl.textContent = '🔄 실제 서버에 요청 중...';
     try{
-      const res = await fetch(current.backend + '/vulnerable', {
+      const body = current.mode==='search' ? { id: vals.id } : { username: vals.u, password: vals.p };
+      const res = await fetch(current.backend, {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ username: vals.u, password: vals.p })
+        body: JSON.stringify(body)
       });
       if (!res.ok) throw new Error('HTTP '+res.status);
       const data = await res.json();
       qpreviewEl.textContent = '[실제 서버가 실행한 SQL]\n' + data.sql;
+
       if (data.error){
         resultEl.className='err';
         resultEl.textContent = '⚠ 실제 서버 SQL 오류: '+data.error;
+
+      } else if (current.mode==='search'){
+        if (!data.rows.length){
+          resultEl.className='fail';
+          resultEl.textContent = '조회 결과 없음. (실제 SQLite 응답)';
+        } else if (data.rows.length===1 && String(vals.id).trim()===String(data.rows[0].id)){
+          resultEl.className='ok';
+          resultEl.textContent = '정상 조회: '+data.rows[0].name+' — 실제 서버·DB 응답입니다.';
+        } else {
+          resultEl.className='ok';
+          resultEl.textContent = '🎉 실제 백엔드에서 SQL Injection 성공! 조건이 항상 참이 되어 '+data.rows.length+'개 상품이 한꺼번에 노출됨: '+data.rows.map(r=>r.name).join(', ')+' — 진짜 SQLite가 실행한 결과입니다.';
+          getState(current.id).solved = true;
+          showExplain();
+          updateProgress();
+        }
+
       } else if (!data.rows.length){
         resultEl.className='fail';
-        resultEl.textContent = '로그인 실패: 조건을 만족하는 사용자가 없습니다. (실제 SQLite 응답)';
+        resultEl.textContent = current.safe
+          ? '로그인 실패. 패치가 적용되어 있어 어떤 SQL 페이로드를 넣어도 뚫리지 않습니다 — 위 해설을 참고하세요.'
+          : '로그인 실패: 조건을 만족하는 사용자가 없습니다. (실제 SQLite 응답)';
+
       } else {
         const row = data.rows[0];
         const normal = (vals.u===row.username && vals.p===row.password);
-        if (normal){
+        if (current.safe){
+          if (normal){
+            resultEl.className='ok';
+            resultEl.textContent = '정상 로그인 성공 ('+row.username+'). 패치가 적용되어 입력값이 쿼리 구조에 영향을 주지 못합니다. — 실제 서버·DB 응답입니다.';
+            getState(current.id).solved = true;
+            updateProgress();
+          } else {
+            resultEl.className='fail';
+            resultEl.textContent = '로그인 실패. 패치가 적용되어 있어 어떤 SQL 페이로드를 넣어도 뚫리지 않습니다 — 위 해설을 참고하세요.';
+          }
+        } else if (normal){
           resultEl.className='ok';
-          resultEl.textContent = '정상 로그인 성공 ('+row.username+') — 실제 서버·DB 응답입니다.';
+          resultEl.textContent = '정상 로그인 성공 ('+row.username+') — 이건 Injection이 아니라 그냥 맞는 비밀번호예요. 실제 서버·DB 응답입니다.';
+        } else if (current.challenge){
+          resultEl.className='ok';
+          resultEl.textContent = '🏆 MISSION COMPLETE (실제 백엔드)\n\n✓ SQL 구조 분석\n✓ 입력값 조작\n✓ 필터 우회\n✓ 방어 방식 확인\n\n'+row.username+' 계정으로 로그인 우회에 성공했습니다. 진짜 SQLite가 실행한 결과입니다!';
+          getState(current.id).solved = true;
+          showExplain();
+          updateProgress();
         } else {
           resultEl.className='ok';
           resultEl.textContent = '🎉 실제 백엔드에서 SQL Injection 성공! ('+row.username+' 권한 획득, 총 '+data.rows.length+'개 행 매칭) — 진짜 SQLite가 실행한 결과입니다.';
