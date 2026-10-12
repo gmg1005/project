@@ -259,6 +259,7 @@ function wrapPreview(inner){
 const LEVELS = [
   {
     id:'lv1', tab:'Lv.1 Reflected XSS', short:'Lv.1', diff:'Easy', mode:'reflected', actionLabel:'검색',
+    backend:'/api/xss/lv1/vulnerable',
     fields:[{key:'q',label:'검색어',ph:'검색어를 입력하세요'}],
     theoryTitle:'검색어가 그대로 페이지에 반영됩니다',
     theoryHtml:"<p>검색 결과 페이지가 검색어를 이스케이프 없이 그대로 HTML에 삽입합니다.</p><pre>&lt;p&gt;검색어: {입력값} 에 대한 결과가 없습니다.&lt;/p&gt;</pre><p class='note'>HTML 태그를 넣으면 실제로 렌더링되는지 아래 미리보기에서 확인해보세요.</p>",
@@ -277,6 +278,7 @@ const LEVELS = [
   },
   {
     id:'lv2', tab:'Lv.2 Stored XSS', short:'Lv.2', diff:'Easy-Medium', mode:'stored', actionLabel:'댓글 등록',
+    backend:'/api/xss/lv2',
     fields:[{key:'c',label:'댓글',ph:'댓글을 입력하세요'}],
     theoryTitle:'댓글이 저장되었다가 모든 사람에게 보여집니다',
     theoryHtml:"<p>이 댓글판은 작성한 댓글을 저장했다가, 페이지를 보는 모두에게 그대로 렌더링해서 보여줍니다.</p><p class='note'>Reflected XSS와 다른 점: 한 번 등록하면 이후 그 페이지를 여는 모든 사람에게 영향을 줍니다.</p>",
@@ -294,6 +296,7 @@ const LEVELS = [
   },
   {
     id:'lv3', tab:'Lv.3 필터 우회', short:'Lv.3', diff:'Medium', mode:'stored', actionLabel:'댓글 등록',
+    backend:'/api/xss/lv3',
     filter:(s)=> s.replace(/script/gi,''),
     fields:[{key:'c',label:'댓글',ph:'댓글을 입력하세요'}],
     theoryTitle:'script라는 단어를 걸러내는 필터가 있습니다',
@@ -312,6 +315,7 @@ const LEVELS = [
   },
   {
     id:'lv4', tab:'Lv.4 패치된 버전', short:'Lv.4', diff:'Safe', safe:true, mode:'stored', actionLabel:'댓글 등록',
+    backend:'/api/xss/lv4',
     fields:[{key:'c',label:'댓글',ph:'댓글을 입력하세요'}],
     theoryTitle:'이 레벨은 패치되어 있습니다',
     theoryHtml:"<p>출력 시 HTML 특수문자를 엔티티로 변환합니다.</p><pre>&lt;  →  &amp;lt;\n&gt;  →  &amp;gt;\n\"  →  &amp;quot;</pre><p class='note'>아무 태그나 자유롭게 입력해보고, 태그가 실행되지 않고 '글자 그대로' 표시되는 걸 확인해보세요.</p>",
@@ -324,6 +328,7 @@ const LEVELS = [
   },
   {
     id:'challenge', tab:'🧪 Challenge', short:'Challenge', diff:'Final', challenge:true, mode:'stored', actionLabel:'댓글 등록',
+    backend:'/api/xss/challenge',
     filter:(s)=> s.replace(/script/gi,''),
     fields:[{key:'c',label:'댓글',ph:'댓글을 입력하세요'}],
     theoryTitle:'종합 실습 — 힌트 없이 도전',
@@ -456,13 +461,86 @@ function showExplain(){
   explainFixed.textContent = current.explain.fixed;
 }
 
-runBtn.addEventListener('click', ()=>{
+runBtn.addEventListener('click', async ()=>{
   resultEl.className=''; void resultEl.offsetWidth;
   const st = getState(current.id);
   st.attempts++;
   attemptsLabel.textContent = '시도 횟수: ' + st.attempts;
 
   const raw = currentVal();
+
+  // ===== 백엔드 연동 모드 =====
+  if (current.backend){
+    resultEl.className=''; resultEl.style.display='block';
+    resultEl.textContent = '🔄 실제 서버에 요청 중...';
+    try{
+      let finalHtml, processed;
+      if (current.mode === 'reflected'){
+        // GET /api/xss/lv1/vulnerable?q=...
+        const res = await fetch(current.backend + '?q=' + encodeURIComponent(raw));
+        if (!res.ok) throw new Error('HTTP '+res.status);
+        const data = await res.json();
+        finalHtml = data.html;
+        processed = data.html;
+      } else {
+        // POST /api/xss/{level}/comments  body: { comment }
+        const res = await fetch(current.backend + '/comments', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ comment: raw })
+        });
+        if (!res.ok) throw new Error('HTTP '+res.status);
+        const data = await res.json();
+        st.comments = data.comments; // 서버 댓글 목록으로 동기화
+        finalHtml = data.comments.map(c=>'<div class="comment">'+c+'</div>').join('');
+        processed = data.comments[data.comments.length-1] || '';
+      }
+      previewFrame.srcdoc = wrapPreview(finalHtml);
+
+      const hasTag = /[<>]/.test(raw);
+      const executed = detectExecuted(current.mode==='reflected' ? finalHtml : processed);
+
+      if (current.safe){
+        resultEl.className='ok';
+        resultEl.textContent = hasTag
+          ? '댓글이 등록되었습니다 (실제 서버). 태그가 글자 그대로 표시될 뿐, 코드로는 실행되지 않습니다. 서버의 이스케이프 덕분에 어떤 입력도 안전합니다.'
+          : '댓글이 등록되었습니다 (실제 서버). (평범한 텍스트 댓글)';
+        if (hasTag){ st.solved = true; updateProgress(); renderTabs(); }
+      } else if (executed){
+        resultEl.className='ok';
+        if (current.challenge){
+          resultEl.textContent = '🏆 MISSION COMPLETE (실제 백엔드)\n\n✓ 취약한 출력 구조 분석\n✓ 필터 우회 벡터 탐색\n✓ 스크립트 실행 성공\n\n진짜 서버가 저장/반환한 결과입니다. XSS 학습을 모두 마쳤습니다!';
+        } else {
+          resultEl.textContent = (current.mode==='reflected' ? '🎉 Reflected XSS 성공 (실제 백엔드)! ' : '🎉 Stored XSS 성공 (실제 백엔드)! ') + '스크립트가 실행되는 패턴이 감지되었습니다 — 진짜 서버 응답 기준입니다.';
+        }
+        st.solved = true;
+        showExplain();
+        updateProgress();
+        renderTabs();
+      } else if (hasTag){
+        resultEl.className='fail';
+        resultEl.textContent = '태그를 넣긴 했지만 서버 측 필터링되었거나 실행 가능한 패턴이 아닙니다. 다른 벡터를 시도해보세요.';
+      } else {
+        resultEl.className='ok';
+        resultEl.textContent = current.mode==='reflected'
+          ? '검색어가 그대로 반영되었습니다 (실제 서버). 아직 특수한 입력은 넣지 않았어요.'
+          : '댓글이 등록되었습니다 (실제 서버). (평범한 텍스트 댓글)';
+      }
+    } catch(e){
+      resultEl.className='fail';
+      resultEl.textContent = '⚠ 백엔드 서버에 연결할 수 없습니다.\nbackend 폴더에서 "node server.js"를 먼저 실행한 뒤 http://localhost:3000 으로 접속해서 다시 시도해보세요.\n(브라우저 시뮬레이션으로 자동 전환합니다)';
+      // 백엔드 꺼져 있으면 로컬 시뮬레이션으로 fallback
+      runLocal(raw, st);
+    }
+    renderHints();
+    return;
+  }
+
+  // ===== 로컬 시뮬레이션 모드 (백엔드 없을 때) =====
+  runLocal(raw, st);
+});
+
+function runLocal(raw, st){
   let processed = raw;
   if (current.filter) processed = current.filter(processed);
   if (current.safe) processed = escapeHtml(processed);
@@ -484,7 +562,7 @@ runBtn.addEventListener('click', ()=>{
     resultEl.textContent = hasTag
       ? '댓글이 등록되었습니다. 태그가 글자 그대로 표시될 뿐, 코드로는 실행되지 않습니다. 이스케이프 덕분에 어떤 입력을 넣어도 안전합니다.'
       : '댓글이 등록되었습니다. (평범한 텍스트 댓글)';
-    if (hasTag){ getState(current.id).solved = true; updateProgress(); renderTabs(); }
+    if (hasTag){ st.solved = true; updateProgress(); renderTabs(); }
   } else if (executed){
     resultEl.className='ok';
     if (current.challenge){
@@ -492,7 +570,7 @@ runBtn.addEventListener('click', ()=>{
     } else {
       resultEl.textContent = (current.mode==='reflected' ? '🎉 Reflected XSS 성공! ' : '🎉 Stored XSS 성공! ') + '스크립트가 실행되는 패턴이 감지되었습니다. (alert 창이 뜬 것으로 간주합니다)';
     }
-    getState(current.id).solved = true;
+    st.solved = true;
     showExplain();
     updateProgress();
     renderTabs();
@@ -506,7 +584,7 @@ runBtn.addEventListener('click', ()=>{
       : '댓글이 등록되었습니다. (평범한 텍스트 댓글)';
   }
   renderHints();
-});
+}
 
 document.getElementById('resetBtn').addEventListener('click', ()=>{
   current.fields.forEach(f=> document.getElementById('f_'+f.key).value='');
