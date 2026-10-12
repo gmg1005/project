@@ -19,6 +19,16 @@ const {
 const app = express();
 app.use(express.json());
 
+// 요청 로그 — 브라우저에서 레벨을 실행할 때마다 터미널에 실시간으로 찍혀서,
+// 프론트가 실제로 이 백엔드에 요청을 보내고 있다는 걸 눈으로 바로 확인할 수 있습니다.
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    const time = new Date().toLocaleTimeString('ko-KR', { hour12: false });
+    console.log(`[${time}] ${req.method} ${req.path} ${JSON.stringify(req.body && Object.keys(req.body).length ? req.body : req.query)}`);
+  }
+  next();
+});
+
 // 프론트엔드(index.html, sqli.html, xss.html)를 같은 서버에서 그대로 서빙
 app.use(express.static(path.join(__dirname, '..')));
 

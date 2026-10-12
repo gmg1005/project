@@ -784,7 +784,7 @@ selectLevel('lv1');
 // 실제 백엔드가 켜져 있는지 조용히 확인하고 배지를 띄움 (없어도 에러 없이 무시됨)
 fetch('/api/health').then(r=> r.ok ? r.json() : Promise.reject()).then(()=>{
   const badge = document.createElement('div');
-  badge.textContent = '🟢 실제 백엔드 서버 연결됨 — Lv.1은 진짜 SQLite로 동작합니다';
+  badge.textContent = '🟢 실제 백엔드 서버 연결됨 — Lv.1~4, Challenge 전부 진짜 SQLite로 동작합니다';
   badge.style.cssText = 'background:rgba(79,184,125,.12);border:1px solid var(--success);color:var(--success);padding:8px 12px;border-radius:5px;font-size:13px;margin-top:14px;font-family:var(--mono);';
   document.querySelector('header').appendChild(badge);
 }).catch(()=>{ /* 백엔드 없음 — 조용히 시뮬레이션 모드 유지 */ });
