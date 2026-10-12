@@ -11,7 +11,7 @@
 |---|---|
 | 백엔드 API (SQLi Lv.1~4 + Challenge, XSS Lv.1~4 + Challenge) | ✅ 전부 구현 + curl 테스트 완료 |
 | 프론트엔드 연동 (`sqli.html`) | ✅ Lv.1~4, Challenge 전부 연동 완료 |
-| 프론트엔드 연동 (`xss.html`) | 아직 연동 안 됨 |
+| 프론트엔드 연동 (`xss.html`) | ✅ Lv.1~4, Challenge 전부 연동 완료 |
 | GitHub 업로드 | ✅ main 브랜치에 push 완료 (Render 등 실제 호스팅 배포는 아직 안 함) |
 
 API 전체 명세는 **[API.md](./API.md)** 참고 — 경로, 요청/응답 형식, 연동 코드 예시가 다 들어있습니다.
@@ -22,7 +22,7 @@ API 전체 명세는 **[API.md](./API.md)** 참고 — 경로, 요청/응답 형
 (repo 루트)
 ├── index.html    ← 허브 페이지
 ├── sqli.html     ← SQL Injection 실습 (전체 백엔드 연동됨)
-├── xss.html      ← XSS 실습 (아직 시뮬레이션 모드만)
+├── xss.html      ← XSS 실습 (전체 백엔드 연동됨)
 ├── API.md        ← 전체 API 명세서
 ├── backend/
 │   ├── server.js   ← Express 서버 (정적 파일 서빙 + 전체 API 라우트)
@@ -58,9 +58,9 @@ node server.js
 ```
 `http://localhost:3000` 으로 접속하세요. (python http.server 말고 이 주소로 들어가야 실제 서버가 같이 동작합니다.)
 
-**확인 방법**: `sqli.html` 화면 상단에 `🟢 실제 백엔드 서버 연결됨` 배지가 뜨면 성공입니다. 이 상태에서 Lv.1~4, Challenge 아무 레벨에서나 공격을 시도하면, 그 결과는 브라우저 안 시뮬레이션이 아니라 **진짜 Node.js 서버가 진짜 SQLite에 쿼리를 날려서** 나온 결과입니다.
+**확인 방법**: `sqli.html` / `xss.html` 화면 상단에 `🟢 실제 백엔드 서버 연결됨` 배지가 뜨면 성공입니다. 이 상태에서 Lv.1~4, Challenge 아무 레벨에서나 공격을 시도하면, 그 결과는 브라우저 안 시뮬레이션이 아니라 **진짜 Node.js 서버가 진짜 SQLite에 쿼리를 날려서** 나온 결과입니다.
 
-백엔드가 꺼져 있으면 SQLi의 모든 레벨(Lv.1~4, Challenge)이 자동으로 "백엔드에 연결할 수 없습니다" 안내로 전환되고, 그대로 브라우저 시뮬레이션으로 이어서 진행할 수 있습니다.
+백엔드가 꺼져 있으면 SQLi, XSS 모든 레벨(Lv.1~4, Challenge)이 자동으로 "백엔드에 연결할 수 없습니다" 안내로 전환되고, 그대로 브라우저 시뮬레이션으로 이어서 진행할 수 있습니다.
 
 ## API로 직접 확인해보기 (프론트 없이)
 
@@ -85,14 +85,14 @@ curl -X POST http://localhost:3000/api/xss/lv3/comments \
 ## 다음 할 일
 
 - [x] `sqli.html` Lv.2~4, Challenge를 API.md 보고 `fetch` 연동 — Lv.1 패턴 재사용, 레벨별 성공 판정까지 반영
-- [ ] `xss.html` Lv.1~4, Challenge를 API.md 보고 `fetch` 연동
+- [x] `xss.html` Lv.1~4, Challenge를 API.md 보고 `fetch` 연동
 - [ ] SQLite를 메모리(`:memory:`) 대신 파일로 바꿔서 재시작해도 데이터 유지 (선택)
 - [ ] Render 등 호스팅에 연결해서 실제 배포 (GitHub main에는 이미 올라가 있음)
 
 ## 각 모듈 수정 포인트
 
 ### sqli.html / xss.html
-- `LEVELS` 배열 — 레벨별 이론/힌트/로직/해설. `backend` 필드가 있으면 그 레벨은 실제 서버로 요청을 보냅니다 (SQLi는 Lv.1~4, Challenge 전체에 적용됨).
+- `LEVELS` 배열 — 레벨별 이론/힌트/로직/해설. `backend` 필드가 있으면 그 레벨은 실제 서버로 요청을 보냅니다 (SQLi, XSS 모두 Lv.1~4, Challenge 전체에 적용됨).
 - `tokenize()` / `parseWhere()` / `evalBool()` (sqli.html) — 시뮬레이션 모드에서 쓰는 자체 SQL 파서
 - `detectExecuted()` (xss.html) — XSS 실행 여부를 판정하는 패턴 규칙
 
