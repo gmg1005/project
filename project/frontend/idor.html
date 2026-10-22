@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>IDOR 취약점 실습 페이지</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 600px; margin: auto; }
+        input, button { padding: 8px; margin: 5px 0; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>IDOR 취약점 실습</h2>
+        <p>조회할 사용자 번호(ID)를 입력하세요 (예: 1, 2, 3)</p>
+        <input type="number" id="userId" value="1" min="1" max="3">
+        <button onclick="fetchUserData()">정보 조회</button>
+        
+        <h3>결과:</h3>
+        <pre id="result">조회 결과가 여기에 표시됩니다.</pre>
+    </div>
+
+    <script>
+        function fetchUserData() {
+            const id = document.getElementById('userId').value;
+            fetch(`/api/user?id=${id}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+                })
+                .catch(error => {
+                    document.getElementById('result').textContent = '에러 발생: ' + error;
+                });
+        }
+    </script>
+</body>
+</html>
