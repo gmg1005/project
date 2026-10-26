@@ -35,6 +35,27 @@ db.exec(`
     id INTEGER PRIMARY KEY, flag TEXT NOT NULL
   );
 
+  -- Lv.5 UNION SELECT: 독립된 정식 레벨. products_lv5는 공개 상품 목록이고,
+  -- vault_lv5는 평범하게 조회해서는 절대 안 보이는 테이블 — UNION SELECT로만 꺼낼 수 있습니다.
+  CREATE TABLE products_lv5 (
+    id INTEGER PRIMARY KEY, name TEXT NOT NULL
+  );
+  CREATE TABLE vault_lv5 (
+    id INTEGER PRIMARY KEY, secret TEXT NOT NULL
+  );
+
+  -- Blind SQL Injection: 레벨마다 독립 테이블. 응답은 "참/거짓"만 돌려주고 데이터는 절대 노출하지 않습니다.
+  -- Lv.1은 필터 없음, Lv.2/Challenge는 SUBSTR 함수 이름을 걸러내서 LIKE로 우회해야 합니다.
+  CREATE TABLE blind_lv1 (
+    id INTEGER PRIMARY KEY, username TEXT NOT NULL, password TEXT NOT NULL
+  );
+  CREATE TABLE blind_lv2 (
+    id INTEGER PRIMARY KEY, username TEXT NOT NULL, password TEXT NOT NULL
+  );
+  CREATE TABLE blind_challenge (
+    id INTEGER PRIMARY KEY, username TEXT NOT NULL, password TEXT NOT NULL
+  );
+
   INSERT INTO users_lv1 (username, password, secret) VALUES
     ('admin', 'Str1ngB3nd!', 'Lv.1 돌파 — 문자열 연결형 SQL Injection으로 로그인 우회 성공'),
     ('guest', 'guest123', NULL);
@@ -53,6 +74,16 @@ db.exec(`
     (2, '스티커 세트');
   INSERT INTO challenge_vault (id, flag) VALUES
     (1, 'FLAG{SQLI_CHAIN_COMPLETE}');
+
+  INSERT INTO products_lv5 (id, name) VALUES
+    (1, '텀블러'),
+    (2, '마우스패드');
+  INSERT INTO vault_lv5 (id, secret) VALUES
+    (1, 'Lv.5 돌파 — UNION SELECT로 다른 테이블의 값을 그대로 이어붙여 추출 성공');
+
+  INSERT INTO blind_lv1 (username, password) VALUES ('admin', 'B1ndB0ol9');
+  INSERT INTO blind_lv2 (username, password) VALUES ('admin', 'L1keFlt7r');
+  INSERT INTO blind_challenge (username, password) VALUES ('admin', 'FLAG{BLIND_SQLI_MASTER}');
 `);
 
 // level 문자열 → 실제 테이블 이름. server.js가 라우트별로 고정해서 넘기는 값만 쓰이므로
@@ -117,6 +148,42 @@ function patchedProduct(id) {
 // ⚠ 취약: 숫자형 파라미터를 따옴표 없이 그대로 삽입 (UNION SELECT로 challenge_vault를 노려야 진짜 FLAG가 나옴)
 function vulnerableChallengeSearch(id) {
   return run(`SELECT * FROM challenge_products WHERE id=${id}`);
+}
+
+// ---------- Lv.5 UNION SELECT (독립 정식 레벨) ----------
+// Lv.2와 같은 숫자형 삽입 패턴이지만 대상 테이블이 달라서, Lv.2에서 쓴 공격을 그대로 복사해도 안 풀립니다.
+// vault_lv5는 평범한 조회로는 절대 안 보이고, UNION SELECT로 컬럼 2개(id, secret)를 맞춰 이어붙여야만 노출됩니다.
+
+// ⚠ 취약: 숫자형 파라미터를 따옴표 없이 그대로 삽입
+function vulnerableUnionSearch(id) {
+  return run(`SELECT * FROM products_lv5 WHERE id=${id}`);
+}
+
+// ========== Blind SQL Injection ==========
+// 응답에 쿼리 결과(행 데이터)를 절대 포함하지 않고, "조건을 만족하는 행이 있었는지(참/거짓)"만 돌려줍니다.
+// 레벨마다 완전히 다른 테이블 + 다른 비밀번호를 둬서, 한 레벨에서 알아낸 값으로 다른 레벨이 풀리지 않게 합니다.
+const BLIND_TABLE = { lv1: 'blind_lv1', lv2: 'blind_lv2', challenge: 'blind_challenge' };
+
+// ⚠ 취약: 문자열 연결, 필터 없음 (Lv.1) — SUBSTR(password,1,1)='x' 같은 조건을 그대로 붙일 수 있음
+function blindLogin(username, level = 'lv1') {
+  const table = BLIND_TABLE[level] || BLIND_TABLE.lv1;
+  const result = run(`SELECT 1 FROM ${table} WHERE username='${username}'`);
+  return { sql: result.sql, matched: result.rows.length > 0, error: result.error };
+}
+
+// Lv.2 / Challenge 전용 필터: 'substr' 함수 이름을 (대소문자 무시) 제거 — LIKE + 와일드카드로 우회해야 함
+const stripSubstr = (s) => String(s).replace(/substr/gi, '');
+
+// ⚠ 취약: substr 블랙리스트 필터만 걸어둔 문자열 연결 (Lv.2, Challenge — 서로 다른 level 값으로 호출됨)
+function filteredBlindLogin(username, level = 'lv2') {
+  return blindLogin(stripSubstr(username), level);
+}
+
+// ✅ 정답 확인용: 추출한 값이 맞는지 Prepared Statement로 안전하게 비교만 해줌 (값 자체는 절대 돌려주지 않음)
+function blindVerify(guess, level = 'lv1') {
+  const table = BLIND_TABLE[level] || BLIND_TABLE.lv1;
+  const result = run(`SELECT 1 FROM ${table} WHERE password=?`, [guess]);
+  return { correct: result.rows.length > 0 };
 }
 
 // ========== XSS ==========
@@ -189,6 +256,10 @@ module.exports = {
   vulnerableProduct,
   patchedProduct,
   vulnerableChallengeSearch,
+  vulnerableUnionSearch,
+  blindLogin,
+  filteredBlindLogin,
+  blindVerify,
   // XSS
   xssVulnerable,
   xssPatched,

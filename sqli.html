@@ -22,6 +22,17 @@
   h1{font-size:22px; margin:0 0 6px; font-weight:700; letter-spacing:-0.2px;}
   .sub{color:var(--muted); font-size:14.5px; margin:0;}
 
+  .cat-row{display:flex; gap:0; margin:20px 0 14px; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--panel);}
+  .cat-btn{
+    flex:1; min-width:0; font-family:var(--sans); font-weight:600; font-size:13.5px; padding:11px 10px;
+    border:none; background:transparent; color:var(--muted); cursor:pointer; text-align:center;
+    border-right:1px solid var(--border);
+  }
+  .cat-btn:last-child{border-right:none;}
+  .cat-btn .tagline{display:block; font-size:11px; font-weight:400; color:var(--muted); margin-top:2px; font-family:var(--mono);}
+  .cat-btn.active{background:#241f14; color:var(--accent);}
+  .cat-btn.active .tagline{color:var(--accent); opacity:.75;}
+
   .tabs{display:flex; gap:8px; flex-wrap:wrap; margin:20px 0 18px;}
   .tab{
     font-family:var(--mono); font-size:13px; padding:8px 12px; border-radius:5px;
@@ -228,8 +239,12 @@ WHERE username='admin'
 
   <div id="practice"></div>
   <div class="attempts" id="progress" style="margin-bottom:10px;"></div>
+  <div class="cat-row" id="catRow">
+    <button class="cat-btn active" data-cat="normal">일반 SQL Injection<span class="tagline">결과가 화면에 바로 보임</span></button>
+    <button class="cat-btn" data-cat="blind">Blind SQL Injection<span class="tagline">참/거짓만 보고 유추</span></button>
+  </div>
   <div class="tabs" id="tabs"></div>
-  <div class="note" style="margin:-10px 0 14px;">권장 순서: Lv.1 → Lv.2 → Lv.3 → Lv.4 → Challenge (순서대로 하지 않아도 자유롭게 이동할 수 있습니다)</div>
+  <div class="note" style="margin:-10px 0 14px;">권장 순서: 일반 Lv.1 → Lv.2 → Lv.3 → Lv.4 → Lv.5 → Challenge, 그다음 위 카테고리에서 Blind SQL Injection으로 전환 (순서대로 하지 않아도 자유롭게 이동할 수 있습니다)</div>
 
   <section class="theory" id="theorySection">
     <h2><span class="dot"></span><span id="theoryTitle"></span></h2>
@@ -453,6 +468,24 @@ const LEVELS = [
     }
   },
   {
+    id:'lv5', tab:'Lv.5 UNION SELECT', short:'Lv.5', diff:'Medium-Hard', backend:'/api/sqli/lv5/vulnerable',
+    fields:[{key:'id',label:'상품 ID',ph:'예: 1'}],
+    theoryTitle:'UNION SELECT — 다른 테이블 데이터를 이어붙이기',
+    theoryHtml:"<p>Lv.2처럼 숫자형 파라미터를 따옴표 없이 그대로 쿼리에 이어붙입니다. 그 뒤에 <code>UNION SELECT</code>로 완전히 다른 쿼리를 이어붙이면, 두 결과가 하나로 합쳐져서 돌아옵니다.</p><pre>원래: SELECT * FROM products_lv5 WHERE id=999\n입력: 0 UNION SELECT id, secret FROM vault_lv5 --\n→ 상품 목록 자리에 vault_lv5의 비밀 값이 그대로 노출됨</pre><p class='note'>조건: 두 SELECT의 <b>컬럼 개수가 같아야</b> 합니다. products_lv5는 컬럼이 2개(id, name)라서, UNION 쪽도 2개로 맞춰야 합니다.</p><p class='note'>이 레벨은 backend 서버가 켜져 있어야 동작합니다 (시뮬레이션 모드 없음).</p>",
+    buildQuery:(v)=> "SELECT * FROM products_lv5 WHERE id="+v.id,
+    db: [{id:1,name:'텀블러'},{id:2,name:'마우스패드'}], mode:'search',
+    hints:[
+      'id 값을 따옴표 없이 그대로 쿼리에 붙입니다. 쿼리 뒤에 또 다른 SELECT를 이어붙일 수 있지 않을까요?',
+      '두 SELECT 결과를 UNION으로 합치려면 컬럼 개수가 같아야 합니다. products_lv5는 컬럼이 2개(id, name)입니다.',
+      "0 UNION SELECT id, secret FROM vault_lv5 -- 처럼 입력해보세요. (0을 쓰는 이유: 존재하지 않는 상품 id라 UNION 결과만 깔끔하게 보임)"
+    ],
+    explain:{
+      why:"products_lv5와 vault_lv5는 컬럼 개수가 같은(2개) 서로 다른 테이블입니다. UNION SELECT로 두 SELECT 결과를 합치면, 원래는 절대 보이지 않던 vault_lv5의 값이 상품 목록 자리에 그대로 이어붙어 나옵니다.",
+      vuln:"$q = \"SELECT * FROM products_lv5\n WHERE id=\" . $_GET['id'];",
+      fixed:"파라미터 바인딩(Prepared Statement)을 쓰면 id 자리에 UNION SELECT 같은 추가 구문을 끼워 넣을 수 없습니다."
+    }
+  },
+  {
     id:'challenge', tab:'🧪 Challenge', short:'Challenge', diff:'Final', challenge:true,
     fields:[],
     theoryTitle:'종합 실습 — 2단계 구성',
@@ -467,6 +500,51 @@ const LEVELS = [
   }
 ];
 
+// ===== Blind SQL Injection 레벨 (별도 카테고리) =====
+// 응답은 "참/거짓"만 알려주고 데이터는 절대 노출하지 않습니다. 레벨마다 완전히 다른 테이블/비밀번호를
+// 써서, 한 레벨에서 알아낸 값으로 다른 레벨이 풀리지 않게 합니다.
+const BLIND_LEVELS = [
+  {
+    id:'blindlv1', tab:'Blind Lv.1', short:'B-Lv.1', diff:'Medium',
+    backend:'/api/sqli/blind/lv1/vulnerable', verifyBackend:'/api/sqli/blind/lv1/verify',
+    mode:'blind', fields:[], buildQuery:()=>'', db:[],
+    theoryTitle:'Boolean-based Blind — 참/거짓으로만 판단',
+    theoryHtml:"<p>이 로그인 폼은 성공/실패 메시지나 데이터를 전혀 보여주지 않고, '조건을 만족하는 행이 있었는지(참/거짓)'만 알려줍니다.</p><pre>admin' AND SUBSTR(password,1,1)='B' --   → TRUE\nadmin' AND SUBSTR(password,1,1)='A' --   → FALSE</pre><p class='note'>참/거짓을 반복 관찰하면서 비밀번호를 한 글자씩 알아내는 게 목표입니다. 다 알아냈다면 아래 '정답 제출'에 입력해보세요.</p><p class='note'>이 레벨은 backend 서버가 켜져 있어야 동작합니다 (시뮬레이션 모드 없음).</p>",
+    hints:[],
+    explain:{
+      why:"TRUE/FALSE 응답만으로도 SUBSTR(password,N,1) 비교를 반복하면 비밀번호를 한 글자씩 전부 복원할 수 있습니다. 데이터를 직접 보여주지 않아도, 조건의 참/거짓이라는 '단 1비트의 정보'만으로 전체 값을 추출할 수 있다는 게 Blind SQL Injection의 핵심입니다.",
+      vuln:"$q = \"SELECT 1 FROM blind_lv1\n WHERE username='$u'\";",
+      fixed:"Prepared Statement를 쓰면 입력값이 SUBSTR 같은 SQL 함수로 해석되지 않습니다."
+    }
+  },
+  {
+    id:'blindlv2', tab:'Blind Lv.2', short:'B-Lv.2', diff:'Medium-Hard',
+    backend:'/api/sqli/blind/lv2/vulnerable', verifyBackend:'/api/sqli/blind/lv2/verify',
+    mode:'blind', fields:[], buildQuery:()=>'', db:[],
+    theoryTitle:'필터 우회 — SUBSTR이 막혀있다면?',
+    theoryHtml:"<p>이 레벨은 <code>substr</code>이라는 함수 이름이 들어가면 걸러내는 블랙리스트 필터가 있습니다. 같은 효과를 내는 다른 방법이 필요합니다.</p><pre>admin' AND password LIKE 'L%' --   → TRUE (첫 글자가 L)\nadmin' AND password LIKE 'A%' --   → FALSE</pre><p class='note'>함수를 아예 안 쓰고 LIKE + 와일드카드(%)만으로 자리 비교를 할 수 있습니다.</p><p class='note'>이 레벨은 backend 서버가 켜져 있어야 동작합니다 (시뮬레이션 모드 없음).</p>",
+    hints:[],
+    explain:{
+      why:"서버는 'substr' 문자열만 걸러낼 뿐, 같은 효과를 내는 다른 방법(LIKE + 와일드카드)까지는 막지 못합니다. 블랙리스트로 특정 함수 이름만 지우는 방어는 이렇게 쉽게 우회됩니다.",
+      vuln:"$u = str_ireplace('substr','',$u);\n$q = \"...WHERE username='$u'\";",
+      fixed:"Prepared Statement를 쓰면 필터링 로직과 무관하게 LIKE 우회 자체가 통하지 않습니다."
+    }
+  },
+  {
+    id:'blindchallenge', tab:'🧪 Blind Challenge', short:'B-Challenge', diff:'Final', challenge:true,
+    backend:'/api/sqli/blind/challenge/vulnerable', verifyBackend:'/api/sqli/blind/challenge/verify',
+    mode:'blind', fields:[], buildQuery:()=>'', db:[],
+    theoryTitle:'종합 Challenge — FLAG 전체 추출',
+    theoryHtml:"<p>Lv.2와 같은 substr 필터가 걸려 있습니다. 화면엔 참/거짓만 뜨고 데이터는 끝까지 보이지 않습니다. 이번엔 힌트 없이, 숨겨진 FLAG 전체를 한 글자씩 직접 알아내야 합니다.</p><p class='note'>Lv.1~2 비밀번호와는 다른 값이라 외워서는 못 풉니다. 알파벳을 하나씩 다 시도하는 건 느리니, 부등호(&gt;, &lt;)로 범위를 반씩 좁히는 이분 탐색을 써보세요.</p><p class='note'>이 레벨은 backend 서버가 켜져 있어야 동작합니다 (시뮬레이션 모드 없음).</p>",
+    hints:[],
+    explain:{
+      why:"Lv.1~2에서 연습한 참/거짓 기반 추출을 반복해서 FLAG 문자열 전체를 복원했습니다. 데이터가 전혀 보이지 않는 상황에서도, 서버의 아주 미세한 반응 차이(참/거짓)만으로 전체 데이터를 빼낼 수 있다는 걸 보여줍니다.",
+      vuln:"$u = str_ireplace('substr','',$u);\n$q = \"...WHERE username='$u'\";",
+      fixed:"Prepared Statement를 쓰면 이런 조합 공격 자체가 원천적으로 통하지 않습니다."
+    }
+  }
+];
+
 // 종합 Challenge 전용 2단계(Stage 1/2) 진행 상태 — 레벨 id별로 따로 관리(지금은 'challenge' 하나뿐)
 const challengeState = {};
 function getChallengeState(id){
@@ -477,6 +555,8 @@ function getChallengeState(id){
 const state = {};
 function getState(id){ return state[id] || (state[id]={attempts:0, unlocked:1, solved:false}); }
 let current = LEVELS[0];
+let cat = 'normal';
+function currentLevels(){ return cat === 'blind' ? BLIND_LEVELS : LEVELS; }
 
 // ===== DOM refs =====
 const tabsEl = document.getElementById('tabs');
@@ -502,9 +582,10 @@ function updatePreview(){
 }
 
 function updateProgress(){
-  const total = LEVELS.length;
+  const all = [...LEVELS, ...BLIND_LEVELS];
+  const total = all.length;
   let solved = 0;
-  const parts = LEVELS.map(lv=>{
+  const parts = all.map(lv=>{
     const done = getState(lv.id).solved;
     if (done) solved++;
     return (lv.short||lv.tab) + (done ? ' ✓' : ' ○');
@@ -515,7 +596,7 @@ function updateProgress(){
 
 function renderTabs(){
   tabsEl.innerHTML = '';
-  LEVELS.forEach(lv=>{
+  currentLevels().forEach(lv=>{
     const b = document.createElement('div');
     b.className = 'tab' + (lv.id===current.id ? ' active' : '');
     b.innerHTML = lv.tab + (getState(lv.id).solved ? '<span class="chk">✓</span>' : '');
@@ -524,18 +605,21 @@ function renderTabs(){
   });
 }
 function selectLevel(id){
-  current = LEVELS.find(l=>l.id===id);
+  current = currentLevels().find(l=>l.id===id);
   theoryTitleEl.textContent = current.theoryTitle;
   theoryBodyEl.innerHTML = current.theoryHtml;
   fieldsEl.innerHTML = '';
 
   const isChallenge2 = current.mode === 'challenge2stage';
-  document.getElementById('qpreviewLabel').style.display = isChallenge2 ? 'none' : '';
-  qpreviewEl.style.display = isChallenge2 ? 'none' : '';
-  document.getElementById('runRow').style.display = isChallenge2 ? 'none' : '';
+  const isBlind = current.mode === 'blind';
+  document.getElementById('qpreviewLabel').style.display = (isChallenge2||isBlind) ? 'none' : '';
+  qpreviewEl.style.display = (isChallenge2||isBlind) ? 'none' : '';
+  document.getElementById('runRow').style.display = (isChallenge2||isBlind) ? 'none' : '';
 
   if (isChallenge2){
     renderChallengeStage();
+  } else if (isBlind){
+    renderBlindStage(current);
   } else {
     current.fields.forEach(f=>{
       const lab = document.createElement('label'); lab.textContent = f.label; lab.setAttribute('for','f_'+f.key);
@@ -559,6 +643,84 @@ function selectLevel(id){
   const st = getState(current.id);
   attemptsLabel.textContent = '시도 횟수: ' + st.attempts;
   updateProgress();
+}
+
+// ---- Blind SQL Injection 전용: 참/거짓 질의 + 정답 제출 ----
+function renderBlindStage(level){
+  const st = getState(level.id);
+  fieldsEl.innerHTML = '';
+
+  const box = document.createElement('div');
+  box.className = 'stage-block';
+  box.innerHTML = '<div class="stage-head"><span class="stage-badge doing">BLIND</span><span class="stage-title">참/거짓 질의</span></div>';
+  const inp = document.createElement('input'); inp.type='text'; inp.id='blindU'; inp.placeholder="예: admin' AND SUBSTR(password,1,1)='B' -- "; inp.autocomplete='off'; inp.spellcheck=false;
+  const btn = document.createElement('button'); btn.className='primary'; btn.textContent='질의 실행';
+  const atLabel = document.createElement('div'); atLabel.className='attempts'; atLabel.textContent='시도 횟수: '+st.attempts;
+  const resBox = document.createElement('div'); resBox.className='miniresult';
+  btn.addEventListener('click', async ()=>{
+    st.attempts++;
+    atLabel.textContent = '시도 횟수: '+st.attempts;
+    resBox.className='miniresult'; resBox.style.display='block'; resBox.textContent='🔄 실제 서버에 요청 중...';
+    try{
+      const res = await fetch(level.backend, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({username: inp.value})
+      });
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      const data = await res.json();
+      if (data.error){
+        resBox.className='miniresult err'; resBox.textContent='⚠ 실제 서버 SQL 오류: '+data.error;
+      } else {
+        resBox.className = 'miniresult ' + (data.matched ? 'ok' : 'fail');
+        resBox.textContent = data.matched ? '✓ TRUE — 조건에 맞는 데이터가 존재합니다' : '✗ FALSE — 조건에 맞는 데이터가 없습니다';
+      }
+    } catch(e){
+      resBox.className='miniresult err';
+      resBox.textContent = '⚠ 백엔드 서버에 연결할 수 없습니다.\nbackend 폴더에서 "node server.js"를 먼저 실행한 뒤 다시 시도해보세요.';
+    }
+  });
+  box.appendChild(inp); box.appendChild(btn); box.appendChild(atLabel); box.appendChild(resBox);
+  fieldsEl.appendChild(box);
+
+  const verifyBox = document.createElement('div');
+  verifyBox.className = 'stage-block';
+  verifyBox.style.marginTop = '14px';
+  verifyBox.innerHTML = '<div class="stage-head"><span class="stage-badge '+(st.solved?'done':'')+'">'+(st.solved?'✓ 완료':'정답 제출')+'</span><span class="stage-title">추출한 값 확인</span></div>';
+  if (!st.solved){
+    const gInp = document.createElement('input'); gInp.type='text'; gInp.id='blindGuess'; gInp.placeholder='한 글자씩 추출한 값을 다 모았다면 전체를 입력해보세요'; gInp.autocomplete='off'; gInp.spellcheck=false;
+    const gBtn = document.createElement('button'); gBtn.className='primary'; gBtn.textContent='정답 확인';
+    const gRes = document.createElement('div'); gRes.className='miniresult';
+    gBtn.addEventListener('click', async ()=>{
+      gRes.className='miniresult'; gRes.style.display='block'; gRes.textContent='🔄 확인 중...';
+      try{
+        const res = await fetch(level.verifyBackend, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({guess: gInp.value})
+        });
+        if (!res.ok) throw new Error('HTTP '+res.status);
+        const data = await res.json();
+        if (data.correct){
+          st.solved = true;
+          showExplain();
+          updateProgress();
+          renderTabs();
+          selectLevel(level.id);
+        } else {
+          gRes.className='miniresult fail'; gRes.textContent='✗ 아직 아닙니다. 계속 추출해보세요.';
+        }
+      } catch(e){
+        gRes.className='miniresult err'; gRes.textContent='⚠ 백엔드 서버에 연결할 수 없습니다.';
+      }
+    });
+    verifyBox.appendChild(gInp); verifyBox.appendChild(gBtn); verifyBox.appendChild(gRes);
+  } else {
+    const done = document.createElement('div');
+    done.className = 'miniresult ok';
+    done.style.display = 'block';
+    done.textContent = level.challenge ? '🏆 MISSION COMPLETE — FLAG 전체를 맞혔습니다!' : '🎉 정답입니다! 전체 값을 정확히 추출했습니다.';
+    verifyBox.appendChild(done);
+  }
+  fieldsEl.appendChild(verifyBox);
 }
 
 // ---- 종합 Challenge 전용: Stage 1(로그인 필터 우회) → Stage 2(UNION SELECT 검색) ----
@@ -911,12 +1073,20 @@ function selectQuiz(id){
 }
 renderQuiz();
 
+document.querySelectorAll('.cat-btn').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    cat = b.dataset.cat;
+    document.querySelectorAll('.cat-btn').forEach(x=> x.classList.toggle('active', x===b));
+    selectLevel(currentLevels()[0].id);
+  });
+});
+
 selectLevel('lv1');
 
 // 실제 백엔드가 켜져 있는지 조용히 확인하고 배지를 띄움 (없어도 에러 없이 무시됨)
 fetch('/api/health').then(r=> r.ok ? r.json() : Promise.reject()).then(()=>{
   const badge = document.createElement('div');
-  badge.textContent = '🟢 실제 백엔드 서버 연결됨 — Lv.1~4, Challenge 전부 진짜 SQLite로 동작합니다';
+  badge.textContent = '🟢 실제 백엔드 서버 연결됨 — Lv.1~5, Challenge, Blind SQLi 전부 진짜 SQLite로 동작합니다';
   badge.style.cssText = 'background:rgba(79,184,125,.12);border:1px solid var(--success);color:var(--success);padding:8px 12px;border-radius:5px;font-size:13px;margin-top:14px;font-family:var(--mono);';
   document.querySelector('header').appendChild(badge);
 }).catch(()=>{ /* 백엔드 없음 — 조용히 시뮬레이션 모드 유지 */ });

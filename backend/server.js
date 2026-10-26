@@ -7,6 +7,10 @@ const {
   vulnerableProduct,
   patchedProduct,
   vulnerableChallengeSearch,
+  vulnerableUnionSearch,
+  blindLogin,
+  filteredBlindLogin,
+  blindVerify,
   xssVulnerable,
   xssPatched,
   listComments,
@@ -85,6 +89,45 @@ app.post('/api/sqli/challenge/vulnerable', (req, res) => {
 app.post('/api/sqli/challenge/search', (req, res) => {
   const { id = '' } = req.body || {};
   res.json(vulnerableChallengeSearch(id));
+});
+
+// Lv.5 — UNION SELECT (독립 정식 레벨). Lv.2와 같은 숫자형 삽입이지만 대상 테이블(products_lv5)이
+// 달라서, vault_lv5를 노리려면 UNION SELECT로 컬럼 2개(id, secret)를 직접 맞춰야 합니다.
+app.post('/api/sqli/lv5/vulnerable', (req, res) => {
+  const { id = '' } = req.body || {};
+  res.json(vulnerableUnionSearch(id));
+});
+
+// ========== Blind SQL Injection ==========
+// 세 레벨 모두 서로 다른 테이블 + 다른 비밀번호를 쓰고, 응답에는 "조건을 만족하는 행이 있었는지"만
+// 담겨 있습니다 (matched: true/false) — 실제 데이터는 절대 내려주지 않습니다.
+
+// Lv.1 — Boolean-based, 필터 없음
+app.post('/api/sqli/blind/lv1/vulnerable', (req, res) => {
+  const { username = '' } = req.body || {};
+  res.json(blindLogin(username, 'lv1'));
+});
+
+// Lv.2 — Boolean-based, substr 함수 이름 블랙리스트 필터 (LIKE로 우회해야 함)
+app.post('/api/sqli/blind/lv2/vulnerable', (req, res) => {
+  const { username = '' } = req.body || {};
+  res.json(filteredBlindLogin(username, 'lv2'));
+});
+
+// Challenge — Lv.2와 같은 substr 필터, 힌트 없이 FLAG 전체를 한 글자씩 추출하는 게 목표
+app.post('/api/sqli/blind/challenge/vulnerable', (req, res) => {
+  const { username = '' } = req.body || {};
+  res.json(filteredBlindLogin(username, 'challenge'));
+});
+
+// 정답 확인 — 추출한 값이 맞는지만 알려주고, 틀려도 실제 값은 절대 노출하지 않음
+const BLIND_LEVELS = ['lv1', 'lv2', 'challenge'];
+app.post('/api/sqli/blind/:level/verify', (req, res) => {
+  if (!BLIND_LEVELS.includes(req.params.level)) {
+    return res.status(404).json({ error: 'unknown level' });
+  }
+  const { guess = '' } = req.body || {};
+  res.json(blindVerify(guess, req.params.level));
 });
 
 // ========== XSS ==========
