@@ -60,6 +60,20 @@
   #result.fail{display:block; background:rgba(226,87,76,0.1); border:1px solid var(--danger); color:#f0a49e;}
   #result.err{display:block; background:rgba(226,166,60,0.1); border:1px solid var(--accent); color:var(--accent);}
 
+  /* 종합 Challenge 2단계(Stage 1/2) 전용 블록 */
+  .stage-block{border:1px solid var(--border); border-radius:5px; padding:14px; margin-bottom:12px; background:#1f2531;}
+  .stage-head{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
+  .stage-badge{font-family:var(--mono); font-size:11px; font-weight:700; padding:3px 8px; border-radius:10px; border:1px solid var(--border); color:var(--muted);}
+  .stage-badge.done{color:var(--success); border-color:var(--success); background:rgba(79,184,125,0.12);}
+  .stage-badge.doing{color:var(--accent); border-color:var(--accent); background:#241f14;}
+  .stage-title{font-size:13.5px; font-weight:600;}
+  .stage-block input[type=text]{margin-bottom:10px;}
+  .stage-block button.primary{width:100%; margin-bottom:8px;}
+  .miniresult{margin-top:6px; font-size:13.5px; font-family:var(--mono); padding:10px 12px; border-radius:4px; white-space:pre-wrap; display:none;}
+  .miniresult.ok{display:block; background:rgba(79,184,125,0.12); border:1px solid var(--success); color:var(--success);}
+  .miniresult.fail{display:block; background:rgba(226,87,76,0.1); border:1px solid var(--danger); color:#f0a49e;}
+  .miniresult.err{display:block; background:rgba(226,166,60,0.1); border:1px solid var(--accent); color:var(--accent);}
+
   .hint{border-top:1px solid var(--border); padding:12px 0; font-size:14px; color:#d7dae0;}
   .hint:first-child{border-top:none; padding-top:0;}
   .hint .htitle{font-size:12.5px; color:var(--muted); font-family:var(--mono); margin-bottom:4px;}
@@ -225,9 +239,9 @@ WHERE username='admin'
   <section>
     <h2><span class="dot"></span>실습</h2>
     <div id="fields"></div>
-    <div class="qpreview-label">실시간 쿼리 미리보기</div>
+    <div class="qpreview-label" id="qpreviewLabel">실시간 쿼리 미리보기</div>
     <pre class="qpreview" id="qpreview"></pre>
-    <div class="row" style="margin-top:14px;">
+    <div class="row" style="margin-top:14px;" id="runRow">
       <button class="primary" id="runBtn">실행</button>
       <button class="ghost" id="resetBtn">초기화</button>
       <span class="attempts" id="attemptsLabel"></span>
@@ -439,20 +453,25 @@ const LEVELS = [
     }
   },
   {
-    id:'challenge', tab:'🧪 Challenge', short:'Challenge', diff:'Final', challenge:true, backend:'/api/sqli/challenge/vulnerable',
-    fields:[{key:'u',label:'아이디',ph:'username'},{key:'p',label:'비밀번호',ph:'password'}],
-    theoryTitle:'종합 실습 — 힌트 없이 도전',
-    theoryHtml:"<p>지금까지 배운 걸 직접 조합해볼 차례입니다. 이 로그인 폼에는 <b>OR 필터</b>가 걸려 있습니다.</p><p class='note'>목표: <b>admin 계정으로 로그인 우회하기</b>. 이번엔 힌트가 제공되지 않습니다.</p><p class='note'>이 레벨은 backend 서버가 켜져 있으면 <b>진짜 SQLite</b>에 쿼리를 실행합니다. 꺼져 있으면 자동으로 브라우저 시뮬레이션으로 동작해요.</p>",
-    buildQuery:(v)=> "SELECT * FROM users WHERE username='"+v.u.replace(/or/gi,'')+"' AND password='"+v.p.replace(/or/gi,'')+"'",
-    db: USERS, mode:'login',
+    id:'challenge', tab:'🧪 Challenge', short:'Challenge', diff:'Final', challenge:true,
+    fields:[],
+    theoryTitle:'종합 실습 — 2단계 구성',
+    theoryHtml:"<p>이번 Challenge는 한 번에 끝나지 않습니다. <b>Stage 1</b>(로그인 필터 우회)을 풀어도 FLAG는 안 나오고 \"다음 단계로 가는 힌트\"만 공개됩니다. 그 힌트를 보고 <b>Stage 2</b>(상품 검색, UNION SELECT)까지 풀어야 진짜 FLAG가 나옵니다.</p><p class='note'><b>Stage 1 목표</b>: OR 필터가 걸린 로그인 폼에서 admin 계정으로 로그인 우회.<br><b>Stage 2 목표</b>: Stage 1에서 공개된 힌트를 보고, 상품 검색창에 UNION SELECT로 진짜 FLAG 꺼내기.</p><p class='note'>이 레벨은 backend 서버가 켜져 있어야 동작합니다 (시뮬레이션 모드 없음) — backend 폴더에서 <code>node server.js</code>를 먼저 실행하세요.</p>",
+    buildQuery:()=> '', db: [], mode:'challenge2stage',
     hints:[],
     explain:{
-      why:"admin 계정으로 로그인하려면 비밀번호 조건을 무력화하는 조건 조작(Lv.1)과, OR 필터를 우회하는 방법(Lv.3)을 동시에 적용해야 했습니다. 실제 공격에서도 여러 방어를 한 번에 뚫어야 하는 경우가 많습니다.",
-      vuln:"$u = str_ireplace('or','',$u);\n$p = str_ireplace('or','',$p);\n$q = \"...WHERE username='$u' AND password='$p'\";",
-      fixed:"Prepared Statement를 사용하면 필터링 로직과 무관하게 이런 조합 공격 자체가 원천적으로 통하지 않습니다."
+      why:"Stage 1에서는 Lv.3와 같은 'OR' 블랙리스트 필터 우회 기법을, Stage 2에서는 Lv.2와 같은 숫자형 삽입 취약점에 UNION SELECT를 적용하는 기법을 썼습니다. 서로 다른 두 가지 SQL Injection 기법을 순서대로 조합해야 끝까지 풀리는 구조입니다.",
+      vuln:"// Stage 1\n$u = str_ireplace('or','',$u);\n$p = str_ireplace('or','',$p);\n\n// Stage 2\n$q = \"SELECT * FROM products\n WHERE id=\" . $id;",
+      fixed:"두 단계 모두 Prepared Statement로 바꾸면, 필터 우회도 UNION 삽입도 더 이상 통하지 않습니다."
     }
   }
 ];
+
+// 종합 Challenge 전용 2단계(Stage 1/2) 진행 상태 — 레벨 id별로 따로 관리(지금은 'challenge' 하나뿐)
+const challengeState = {};
+function getChallengeState(id){
+  return challengeState[id] || (challengeState[id] = {stage1Done:false, stage2Done:false, stage1Hint:'', s1Attempts:0, s2Attempts:0});
+}
 
 // ===== state =====
 const state = {};
@@ -509,13 +528,25 @@ function selectLevel(id){
   theoryTitleEl.textContent = current.theoryTitle;
   theoryBodyEl.innerHTML = current.theoryHtml;
   fieldsEl.innerHTML = '';
-  current.fields.forEach(f=>{
-    const lab = document.createElement('label'); lab.textContent = f.label; lab.setAttribute('for','f_'+f.key);
-    const inp = document.createElement('input'); inp.type='text'; inp.id='f_'+f.key; inp.placeholder=f.ph;
-    inp.autocomplete='off'; inp.spellcheck=false;
-    inp.addEventListener('input', updatePreview);
-    fieldsEl.appendChild(lab); fieldsEl.appendChild(inp);
-  });
+
+  const isChallenge2 = current.mode === 'challenge2stage';
+  document.getElementById('qpreviewLabel').style.display = isChallenge2 ? 'none' : '';
+  qpreviewEl.style.display = isChallenge2 ? 'none' : '';
+  document.getElementById('runRow').style.display = isChallenge2 ? 'none' : '';
+
+  if (isChallenge2){
+    renderChallengeStage();
+  } else {
+    current.fields.forEach(f=>{
+      const lab = document.createElement('label'); lab.textContent = f.label; lab.setAttribute('for','f_'+f.key);
+      const inp = document.createElement('input'); inp.type='text'; inp.id='f_'+f.key; inp.placeholder=f.ph;
+      inp.autocomplete='off'; inp.spellcheck=false;
+      inp.addEventListener('input', updatePreview);
+      fieldsEl.appendChild(lab); fieldsEl.appendChild(inp);
+    });
+    updatePreview();
+  }
+
   resultEl.className=''; resultEl.textContent='';
   explainSec.style.display = current.safe ? 'block' : 'none';
   if (current.safe){
@@ -523,12 +554,113 @@ function selectLevel(id){
     explainVuln.textContent = current.explain.vuln;
     explainFixed.textContent = current.explain.fixed;
   }
-  updatePreview();
   renderHints();
   renderTabs();
   const st = getState(current.id);
   attemptsLabel.textContent = '시도 횟수: ' + st.attempts;
   updateProgress();
+}
+
+// ---- 종합 Challenge 전용: Stage 1(로그인 필터 우회) → Stage 2(UNION SELECT 검색) ----
+function renderChallengeStage(){
+  const cs = getChallengeState(current.id);
+  fieldsEl.innerHTML = '';
+
+  const s1 = document.createElement('div');
+  s1.className = 'stage-block';
+  s1.innerHTML = '<div class="stage-head"><span class="stage-badge '+(cs.stage1Done?'done':'doing')+'">'+(cs.stage1Done?'✓ 완료':'STAGE 1')+'</span><span class="stage-title">로그인 필터 우회</span></div>';
+
+  if (!cs.stage1Done){
+    const u = document.createElement('input'); u.type='text'; u.id='chU'; u.placeholder='아이디 (예: admin)'; u.autocomplete='off'; u.spellcheck=false;
+    const p = document.createElement('input'); p.type='text'; p.id='chP'; p.placeholder='비밀번호 — 필터 우회 페이로드를 섞어 넣어보세요'; p.autocomplete='off'; p.spellcheck=false;
+    const btn = document.createElement('button'); btn.className='primary'; btn.textContent='Stage 1 로그인 시도';
+    const atLabel = document.createElement('div'); atLabel.className='attempts'; atLabel.textContent='시도 횟수: '+cs.s1Attempts;
+    const resBox = document.createElement('div'); resBox.className='miniresult';
+    btn.addEventListener('click', async ()=>{
+      cs.s1Attempts++;
+      atLabel.textContent = '시도 횟수: '+cs.s1Attempts;
+      resBox.className='miniresult'; resBox.style.display='block'; resBox.textContent='🔄 실제 서버에 요청 중...';
+      try{
+        const res = await fetch('/api/sqli/challenge/vulnerable', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({username:u.value, password:p.value})
+        });
+        if (!res.ok) throw new Error('HTTP '+res.status);
+        const data = await res.json();
+        if (data.error){
+          resBox.className='miniresult err'; resBox.textContent='⚠ 실제 서버 SQL 오류: '+data.error;
+        } else if (!data.rows.length){
+          resBox.className='miniresult fail'; resBox.textContent='로그인 실패: 조건을 만족하는 사용자가 없습니다. (실제 SQLite 응답)';
+        } else {
+          cs.stage1Done = true;
+          cs.stage1Hint = data.rows[0].secret || '(힌트 없음)';
+          renderChallengeStage();
+        }
+      } catch(e){
+        resBox.className='miniresult err';
+        resBox.textContent = '⚠ 백엔드 서버에 연결할 수 없습니다.\nbackend 폴더에서 "node server.js"를 먼저 실행한 뒤 다시 시도해보세요.';
+      }
+    });
+    s1.appendChild(u); s1.appendChild(p); s1.appendChild(btn); s1.appendChild(atLabel); s1.appendChild(resBox);
+  } else {
+    const hintBox = document.createElement('div');
+    hintBox.className = 'miniresult';
+    hintBox.style.cssText = 'display:block; background:#241f14; border:1px solid var(--accent); color:var(--accent);';
+    hintBox.textContent = '🔓 공개된 힌트: "'+cs.stage1Hint+'"';
+    s1.appendChild(hintBox);
+  }
+  fieldsEl.appendChild(s1);
+
+  const s2 = document.createElement('div');
+  s2.className = 'stage-block';
+  s2.style.marginTop = '14px';
+  if (!cs.stage1Done){
+    s2.style.opacity = '.55';
+    s2.innerHTML = '<div class="stage-head"><span class="stage-badge">STAGE 2</span><span class="stage-title">상품 검색 — UNION SELECT</span></div><p class="locked">🔒 Stage 1을 먼저 통과해야 열립니다.</p>';
+  } else {
+    s2.innerHTML = '<div class="stage-head"><span class="stage-badge '+(cs.stage2Done?'done':'doing')+'">'+(cs.stage2Done?'✓ 완료':'STAGE 2')+'</span><span class="stage-title">상품 검색 — UNION SELECT</span></div>';
+    const idInp = document.createElement('input'); idInp.type='text'; idInp.id='chId'; idInp.placeholder='상품 ID (예: 0 UNION SELECT id, flag FROM challenge_vault -- )'; idInp.autocomplete='off'; idInp.spellcheck=false;
+    const btn = document.createElement('button'); btn.className='primary'; btn.textContent='Stage 2 검색 실행';
+    const atLabel = document.createElement('div'); atLabel.className='attempts'; atLabel.textContent='시도 횟수: '+cs.s2Attempts;
+    const resBox = document.createElement('div'); resBox.className='miniresult';
+    btn.addEventListener('click', async ()=>{
+      cs.s2Attempts++;
+      atLabel.textContent = '시도 횟수: '+cs.s2Attempts;
+      resBox.className='miniresult'; resBox.style.display='block'; resBox.textContent='🔄 실제 서버에 요청 중...';
+      try{
+        const res = await fetch('/api/sqli/challenge/search', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({id:idInp.value})
+        });
+        if (!res.ok) throw new Error('HTTP '+res.status);
+        const data = await res.json();
+        if (data.error){
+          resBox.className='miniresult err'; resBox.textContent='⚠ 실제 서버 SQL 오류: '+data.error;
+        } else if (!data.rows.length){
+          resBox.className='miniresult fail'; resBox.textContent='조회 결과 없음. (실제 SQLite 응답)';
+        } else {
+          const flagRow = data.rows.find(r=> String(r.name||'').indexOf('FLAG{') === 0);
+          if (flagRow){
+            cs.stage2Done = true;
+            getState(current.id).solved = true;
+            resBox.className='miniresult ok';
+            resBox.textContent = '🏆 MISSION COMPLETE (실제 백엔드)\n\n✓ Stage 1 필터 우회\n✓ Stage 2 UNION SELECT\n\nFLAG: '+flagRow.name+' — 진짜 SQLite가 실행한 결과입니다.';
+            showExplain();
+            updateProgress();
+            renderTabs();
+          } else {
+            resBox.className='miniresult ok';
+            resBox.textContent = '정상 조회: '+data.rows.map(r=>r.name).join(', ')+' — 아직 challenge_vault는 못 꺼냈어요. 컬럼 개수를 맞춰서 UNION SELECT를 다시 시도해보세요.';
+          }
+        }
+      } catch(e){
+        resBox.className='miniresult err';
+        resBox.textContent = '⚠ 백엔드 서버에 연결할 수 없습니다.\nbackend 폴더에서 "node server.js"를 먼저 실행한 뒤 다시 시도해보세요.';
+      }
+    });
+    s2.appendChild(idInp); s2.appendChild(btn); s2.appendChild(atLabel); s2.appendChild(resBox);
+  }
+  fieldsEl.appendChild(s2);
 }
 
 function renderHints(){
