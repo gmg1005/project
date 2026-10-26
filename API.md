@@ -61,13 +61,75 @@ node server.js
 
 - Lv.1 `patched`와 로직은 동일하고, 레벨 구분을 위해 경로만 따로 뒀습니다.
 
-### Challenge — 종합 (힌트 없음)
+### Lv.5 — UNION SELECT
+
+| 메서드 | 경로 | 요청 body | 응답 |
+|---|---|---|---|
+| POST | `/api/sqli/lv5/vulnerable` | `{ "id": "" }` | `{ sql, rows, error }` |
+
+- Lv.2와 같은 숫자형 삽입 패턴이지만 대상 테이블(`products_lv5`)이 다릅니다. Lv.2에서 쓴 공격을 그대로 복사해도 안 풀립니다.
+- `id`에 `0 UNION SELECT id, secret FROM vault_lv5 -- ` 식으로 넣으면, 평범하게는 절대 안 보이는 `vault_lv5` 테이블의 값이 상품 이름 자리에 그대로 노출됩니다.
+
+### Challenge — 종합, 2단계 구성 (힌트 없음)
+
+Stage 1만 풀어서는 진짜 FLAG가 안 나옵니다. Stage 1에서 받는 `secret`은 다음 단계로 가는 힌트일 뿐이고,
+Stage 2(UNION SELECT)까지 풀어야 진짜 FLAG가 나옵니다.
+
+**Stage 1 — 로그인 우회** (Lv.3과 같은 `or` 필터 기법)
 
 | 메서드 | 경로 | 요청 body | 응답 |
 |---|---|---|---|
 | POST | `/api/sqli/challenge/vulnerable` | `{ "username": "", "password": "" }` | `{ sql, rows, error }` |
 
-- Lv.3과 동일하게 `or` 필터가 걸려 있습니다. 목표는 admin 계정으로 로그인 우회.
+- 성공하면 `rows[0].secret`에 "다음 단계 힌트"가 담겨 돌아옵니다 (FLAG 아님).
+
+**Stage 2 — 상품 검색** (Lv.2/Lv.5와 같은 숫자형 삽입 취약점)
+
+| 메서드 | 경로 | 요청 body | 응답 |
+|---|---|---|---|
+| POST | `/api/sqli/challenge/search` | `{ "id": "" }` | `{ sql, rows, error }` |
+
+- 평범하게 쓰면 `challenge_products` 테이블의 상품만 나옵니다.
+- `id`에 `0 UNION SELECT id, flag FROM challenge_vault -- ` 식으로 UNION SELECT를 넣으면, `challenge_vault` 테이블의 진짜 FLAG(`FLAG{SQLI_CHAIN_COMPLETE}`)가 `name` 컬럼 자리에 노출됩니다.
+
+---
+
+## Blind SQL Injection
+
+세 레벨 모두 **응답에 데이터를 절대 포함하지 않습니다.** "조건을 만족하는 행이 있었는지(참/거짓)"만 `matched` 필드로 돌려줍니다. 레벨마다 완전히 다른 테이블 + 다른 비밀번호를 써서, 한 레벨에서 알아낸 값으로 다른 레벨이 풀리지 않습니다.
+
+### Lv.1 — Boolean-based, 필터 없음
+
+| 메서드 | 경로 | 요청 body | 응답 |
+|---|---|---|---|
+| POST | `/api/sqli/blind/lv1/vulnerable` | `{ "username": "" }` | `{ sql, matched, error }` |
+
+- 예: `admin' AND SUBSTR(password,1,1)='B' -- ` → `matched: true` (비밀번호 첫 글자가 B일 때)
+
+### Lv.2 — 필터 우회
+
+| 메서드 | 경로 | 요청 body | 응답 |
+|---|---|---|---|
+| POST | `/api/sqli/blind/lv2/vulnerable` | `{ "username": "" }` | `{ sql, matched, error }` |
+
+- 서버가 `substr`(대소문자 무시)을 전부 제거합니다. `SUBSTR` 함수를 쓰려 하면 걸러지므로, `LIKE 'L%'` 같은 패턴 비교로 우회해야 합니다.
+
+### Challenge — 종합 (힌트 없음)
+
+| 메서드 | 경로 | 요청 body | 응답 |
+|---|---|---|---|
+| POST | `/api/sqli/blind/challenge/vulnerable` | `{ "username": "" }` | `{ sql, matched, error }` |
+
+- Lv.2와 같은 `substr` 필터. FLAG 전체(`FLAG{BLIND_SQLI_MASTER}`)를 한 글자씩 직접 추출해야 합니다.
+
+### 정답 확인 (세 레벨 공통)
+
+| 메서드 | 경로 | 요청 body | 응답 |
+|---|---|---|---|
+| POST | `/api/sqli/blind/:level/verify` | `{ "guess": "" }` | `{ correct }` |
+
+- `:level`은 `lv1` / `lv2` / `challenge` 중 하나.
+- Prepared Statement로 비교만 하고 실제 값은 절대 응답에 포함하지 않습니다. 추출한 값이 맞는지 "정답 제출" UI에서 확인할 때 씁니다.
 
 ---
 
