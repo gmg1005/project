@@ -6,6 +6,7 @@ const {
   patchedLogin,
   vulnerableProduct,
   patchedProduct,
+  vulnerableChallengeSearch,
   xssVulnerable,
   xssPatched,
   listComments,
@@ -39,11 +40,11 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 // Lv.1 로그인 우회 — 문자열 연결(취약) vs Prepared Statement(패치)
 app.post('/api/sqli/lv1/vulnerable', (req, res) => {
   const { username = '', password = '' } = req.body || {};
-  res.json(vulnerableLogin(username, password));
+  res.json(vulnerableLogin(username, password, 'lv1'));
 });
 app.post('/api/sqli/lv1/patched', (req, res) => {
   const { username = '', password = '' } = req.body || {};
-  res.json(patchedLogin(username, password));
+  res.json(patchedLogin(username, password, 'lv1'));
 });
 
 // Lv.2 숫자형 검색 — 따옴표 없는 숫자 파라미터
@@ -57,21 +58,33 @@ app.post('/api/sqli/lv2/patched', (req, res) => {
 });
 
 // Lv.3 필터 우회 — 서버가 'or' 블랙리스트 필터를 적용한 뒤 실행
+// Lv.1과 다른 계정(level='lv3')을 대상으로 해서, Lv.1에서 알아낸 비밀번호로는 못 풉니다.
 app.post('/api/sqli/lv3/vulnerable', (req, res) => {
   const { username = '', password = '' } = req.body || {};
-  res.json(filteredLogin(username, password));
+  res.json(filteredLogin(username, password, 'lv3'));
 });
 
 // Lv.4 패치된 버전 — Prepared Statement (Lv.1 patched와 동일 로직, 레벨 구분용 별도 경로)
+// 일부러 Lv.1과 같은 계정(level='lv1')을 대상으로 해서 "Lv.1을 뚫었던 공격이 패치 후엔 안 통한다"를 보여줍니다.
 app.post('/api/sqli/lv4', (req, res) => {
   const { username = '', password = '' } = req.body || {};
-  res.json(patchedLogin(username, password));
+  res.json(patchedLogin(username, password, 'lv1'));
 });
 
-// Challenge — Lv.3과 같은 'or' 필터, 힌트 없이 admin 로그인 우회가 목표
+// Challenge — 2단계 구성. 로그인(Lv.3 기법)만으로는 진짜 FLAG가 안 나오고, 아래 search(Lv.2/Lv.5 기법)까지
+// 둘 다 풀어야 끝납니다. Lv.3과도 다른 계정(level='challenge')을 대상으로 해서 Lv.3 비밀번호로는 못 풉니다.
+
+// Stage 1 — 로그인 우회. 성공해도 FLAG 대신 "다음 단계 힌트"(secret 필드)만 돌려줍니다.
 app.post('/api/sqli/challenge/vulnerable', (req, res) => {
   const { username = '', password = '' } = req.body || {};
-  res.json(filteredLogin(username, password));
+  res.json(filteredLogin(username, password, 'challenge'));
+});
+
+// Stage 2 — 상품 검색. Lv.2/Lv.5와 같은 숫자형 삽입 취약점이라, UNION SELECT로
+// challenge_vault 테이블을 직접 조회해야 진짜 FLAG가 나옵니다.
+app.post('/api/sqli/challenge/search', (req, res) => {
+  const { id = '' } = req.body || {};
+  res.json(vulnerableChallengeSearch(id));
 });
 
 // ========== XSS ==========

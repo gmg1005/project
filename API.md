@@ -61,13 +61,27 @@ node server.js
 
 - Lv.1 `patched`와 로직은 동일하고, 레벨 구분을 위해 경로만 따로 뒀습니다.
 
-### Challenge — 종합 (힌트 없음)
+### Challenge — 종합, 2단계 구성 (힌트 없음)
+
+Stage 1만 풀어서는 진짜 FLAG가 안 나옵니다. Stage 1에서 받는 `secret`은 다음 단계로 가는 힌트일 뿐이고,
+Stage 2(UNION SELECT)까지 풀어야 진짜 FLAG가 나옵니다.
+
+**Stage 1 — 로그인 우회** (Lv.3과 같은 `or` 필터 기법)
 
 | 메서드 | 경로 | 요청 body | 응답 |
 |---|---|---|---|
 | POST | `/api/sqli/challenge/vulnerable` | `{ "username": "", "password": "" }` | `{ sql, rows, error }` |
 
-- Lv.3과 동일하게 `or` 필터가 걸려 있습니다. 목표는 admin 계정으로 로그인 우회.
+- 성공하면 `rows[0].secret`에 "다음 단계 힌트"가 담겨 돌아옵니다 (FLAG 아님).
+
+**Stage 2 — 상품 검색** (Lv.2/Lv.5와 같은 숫자형 삽입 취약점)
+
+| 메서드 | 경로 | 요청 body | 응답 |
+|---|---|---|---|
+| POST | `/api/sqli/challenge/search` | `{ "id": "" }` | `{ sql, rows, error }` |
+
+- 평범하게 쓰면 `challenge_products` 테이블의 상품만 나옵니다.
+- `id`에 `0 UNION SELECT id, flag FROM challenge_vault -- ` 식으로 UNION SELECT를 넣으면, `challenge_vault` 테이블의 진짜 FLAG(`FLAG{SQLI_CHAIN_COMPLETE}`)가 `name` 컬럼 자리에 노출됩니다.
 
 ---
 
