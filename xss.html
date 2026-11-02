@@ -100,6 +100,7 @@
   details.usage summary::before{content:"▸ "; color:var(--muted);}
   details.usage[open] summary::before{content:"▾ "; color:var(--muted);}
   details.usage .usage-body{padding:0 0 14px;}
+  .lead{font-size:17px; font-weight:700; color:var(--text); margin:0 0 12px; line-height:1.5;}
 </style>
 </head>
 <body>
@@ -123,63 +124,78 @@
     </div>
   </details>
 
-  <section class="basics">
-    <h2><span class="dot"></span>XSS란?</h2>
-    <p style="margin:0;">Cross-Site Scripting(XSS)은 공격자가 입력한 HTML/JavaScript가 필터링 없이 다른 사용자의 브라우저에서 그대로 실행되는 취약점입니다. 세션 쿠키 탈취, 피싱 화면 삽입, 페이지 변조 등에 악용될 수 있습니다.</p>
-  </section>
+  <details class="usage basics">
+    <summary>XSS란?</summary>
+    <div class="usage-body">
+      <p class="lead">공격자가 넣은 스크립트가 다른 사람 브라우저에서 그대로 실행되는 취약점입니다.</p>
+      <p style="margin:0;">Cross-Site Scripting(XSS)은 공격자가 입력한 HTML/JavaScript가 필터링 없이 다른 사용자의 브라우저에서 그대로 실행되는 취약점입니다. 세션 쿠키 탈취, 피싱 화면 삽입, 페이지 변조 등에 악용될 수 있습니다.</p>
+    </div>
+  </details>
 
-  <section class="basics">
-    <h2><span class="dot"></span>종류</h2>
-    <ul class="plain">
-      <li><b>Reflected XSS</b> — 입력값이 즉시, 그 페이지 응답에만 그대로 반영됨 (예: 검색 결과 페이지)</li>
-      <li><b>Stored XSS</b> — 입력값이 서버에 저장되었다가, 이후 그 페이지를 보는 모든 사용자에게 노출됨 (예: 댓글, 게시글)</li>
-      <li><b>DOM-based XSS</b> — 서버를 거치지 않고 브라우저 쪽 JS가 직접 입력값을 DOM에 반영할 때 발생 (이번 실습에서는 다루지 않습니다)</li>
-    </ul>
-  </section>
+  <details class="usage basics">
+    <summary>종류</summary>
+    <div class="usage-body">
+      <p class="lead">Reflected, Stored, DOM-based — 세 가지가 있고 이번 실습은 Reflected/Stored를 다룹니다.</p>
+      <ul class="plain">
+        <li><b>Reflected XSS</b> — 입력값이 즉시, 그 페이지 응답에만 그대로 반영됨 (예: 검색 결과 페이지)</li>
+        <li><b>Stored XSS</b> — 입력값이 서버에 저장되었다가, 이후 그 페이지를 보는 모든 사용자에게 노출됨 (예: 댓글, 게시글)</li>
+        <li><b>DOM-based XSS</b> — 서버를 거치지 않고 브라우저 쪽 JS가 직접 입력값을 DOM에 반영할 때 발생 (이번 실습에서는 다루지 않습니다)</li>
+      </ul>
+    </div>
+  </details>
 
-  <section class="basics">
-    <h2><span class="dot"></span>입력값이 HTML에 들어가는 과정</h2>
-    <p>서버 코드는 보통 이런 식으로 입력값을 HTML 문자열에 직접 이어 붙입니다.</p>
-    <pre>echo "&lt;p&gt;검색어: " . $_GET['q'] . " 에 대한 결과가 없습니다.&lt;/p&gt;";</pre>
-    <p class="note" style="margin-bottom:10px;"><code>$_GET['q']</code> 자리에 무엇이 들어오든 그대로 HTML 문법의 일부가 됩니다.</p>
-    <div class="codepair">
-      <div>
-        <div class="lbl">정상 입력</div>
-        <pre>검색어: 노트북
+  <details class="usage basics">
+    <summary>입력값이 HTML에 들어가는 과정</summary>
+    <div class="usage-body">
+      <p class="lead">입력값이 그대로 HTML 문법의 일부가 되어버립니다.</p>
+      <p>서버 코드는 보통 이런 식으로 입력값을 HTML 문자열에 직접 이어 붙입니다.</p>
+      <pre>echo "&lt;p&gt;검색어: " . $_GET['q'] . " 에 대한 결과가 없습니다.&lt;/p&gt;";</pre>
+      <p class="note" style="margin-bottom:10px;"><code>$_GET['q']</code> 자리에 무엇이 들어오든 그대로 HTML 문법의 일부가 됩니다.</p>
+      <div class="codepair">
+        <div>
+          <div class="lbl">정상 입력</div>
+          <pre>검색어: 노트북
 
 ↓
 
 &lt;p&gt;검색어: 노트북
  에 대한 결과가 없습니다.&lt;/p&gt;</pre>
-      </div>
-      <div>
-        <div class="lbl">공격 입력</div>
-        <pre>검색어: &lt;script&gt;alert('XSS')&lt;/script&gt;
+        </div>
+        <div>
+          <div class="lbl">공격 입력</div>
+          <pre>검색어: &lt;script&gt;alert('XSS')&lt;/script&gt;
 
 ↓
 
 &lt;p&gt;검색어: &lt;script&gt;alert('XSS')
 &lt;/script&gt; 에 대한 결과가...&lt;/p&gt;</pre>
+        </div>
       </div>
+      <p class="note">오른쪽은 입력값 자체가 하나의 실행 가능한 태그가 되어, 브라우저가 이 페이지를 렌더링할 때 스크립트로 해석하고 실행해버립니다.</p>
     </div>
-    <p class="note">오른쪽은 입력값 자체가 하나의 실행 가능한 태그가 되어, 브라우저가 이 페이지를 렌더링할 때 스크립트로 해석하고 실행해버립니다.</p>
-  </section>
+  </details>
 
-  <section class="basics">
-    <h2><span class="dot"></span>취약한 코드의 특징</h2>
-    <ul class="plain">
-      <li>사용자 입력을 이스케이프 없이 그대로 HTML에 출력한다</li>
-      <li>&lt;, &gt;, &quot;, ' 같은 HTML 특수문자를 엔티티로 변환하지 않는다</li>
-      <li>특정 태그(&lt;script&gt;)만 막으면 안전하다고 착각한다 (다른 태그/속성으로 우회 가능)</li>
-    </ul>
-    <p class="note" style="margin-top:10px;">특정 키워드를 막는 블랙리스트 방식은 보조적인 방어책일 뿐입니다. 근본적인 방어는 출력 시 <b>HTML 엔티티 인코딩(이스케이프)</b>을 하는 것입니다.</p>
-  </section>
+  <details class="usage basics">
+    <summary>취약한 코드의 특징</summary>
+    <div class="usage-body">
+      <p class="lead">이스케이프 없이 입력을 그대로 HTML에 출력하는 게 핵심 문제입니다.</p>
+      <ul class="plain">
+        <li>사용자 입력을 이스케이프 없이 그대로 HTML에 출력한다</li>
+        <li>&lt;, &gt;, &quot;, ' 같은 HTML 특수문자를 엔티티로 변환하지 않는다</li>
+        <li>특정 태그(&lt;script&gt;)만 막으면 안전하다고 착각한다 (다른 태그/속성으로 우회 가능)</li>
+      </ul>
+      <p class="note" style="margin-top:10px;">특정 키워드를 막는 블랙리스트 방식은 보조적인 방어책일 뿐입니다. 근본적인 방어는 출력 시 <b>HTML 엔티티 인코딩(이스케이프)</b>을 하는 것입니다.</p>
+    </div>
+  </details>
 
-  <section class="basics">
-    <h2><span class="dot"></span>공격 원리 &amp; 방어 개요</h2>
-    <div class="flow">입력값 삽입 → 브라우저가 HTML/스크립트로 해석 → 공격자가 작성한 코드가 실행됨</div>
-    <p style="margin:0;">핵심 방어는 <b>출력 시 이스케이프(HTML Entity Encoding)</b>입니다. <code>&lt;</code>를 <code>&amp;lt;</code>로 바꾸면, 브라우저는 그걸 태그가 아니라 그냥 '글자'로 표시합니다. 자세한 대응표는 실습 후 정리 섹션에서 확인하세요.</p>
-  </section>
+  <details class="usage basics">
+    <summary>공격 원리 &amp; 방어 개요</summary>
+    <div class="usage-body">
+      <p class="lead">출력할 때 이스케이프하면, 브라우저는 그걸 태그가 아니라 글자로 봅니다.</p>
+      <div class="flow">입력값 삽입 → 브라우저가 HTML/스크립트로 해석 → 공격자가 작성한 코드가 실행됨</div>
+      <p style="margin:0;">핵심 방어는 <b>출력 시 이스케이프(HTML Entity Encoding)</b>입니다. <code>&lt;</code>를 <code>&amp;lt;</code>로 바꾸면, 브라우저는 그걸 태그가 아니라 그냥 '글자'로 표시합니다. 자세한 대응표는 실습 후 정리 섹션에서 확인하세요.</p>
+    </div>
+  </details>
 
   <div id="practice"></div>
   <div class="attempts" id="progress" style="margin-bottom:10px;"></div>
