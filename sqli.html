@@ -142,6 +142,7 @@
   details.usage summary::before{content:"▸ "; color:var(--muted);}
   details.usage[open] summary::before{content:"▾ "; color:var(--muted);}
   details.usage .usage-body{padding:0 0 14px;}
+  .lead{font-size:17px; font-weight:700; color:var(--text); margin:0 0 12px; line-height:1.5;}
 </style>
 </head>
 <body>
@@ -166,76 +167,94 @@
     </div>
   </details>
 
-  <section class="basics">
-    <h2><span class="dot"></span>SQL Injection이란?</h2>
-    <p style="font-size:14.5px;color:#cfd2da;margin:0;">웹 애플리케이션이 사용자 입력값을 제대로 검증하지 않고 SQL 쿼리에 그대로 끼워 넣을 때, 공격자가 입력값을 통해 쿼리의 구조 자체를 바꿔버리는 공격입니다. 로그인을 우회하거나, 원래 볼 수 없어야 할 데이터를 열람하거나, 데이터베이스 자체를 조작할 수 있습니다.</p>
-  </section>
+  <details class="usage basics">
+    <summary>SQL Injection이란?</summary>
+    <div class="usage-body">
+      <p class="lead">입력값으로 쿼리 구조를 바꿔버리는 공격입니다.</p>
+      <p style="font-size:14.5px;color:#cfd2da;margin:0;">웹 애플리케이션이 사용자 입력값을 제대로 검증하지 않고 SQL 쿼리에 그대로 끼워 넣을 때, 공격자가 입력값을 통해 쿼리의 구조 자체를 바꿔버리는 공격입니다. 로그인을 우회하거나, 원래 볼 수 없어야 할 데이터를 열람하거나, 데이터베이스 자체를 조작할 수 있습니다.</p>
+    </div>
+  </details>
 
-  <section class="basics">
-    <h2><span class="dot"></span>SQL 쿼리의 기본 구조</h2>
-    <pre>SELECT * FROM users
+  <details class="usage basics">
+    <summary>SQL 쿼리의 기본 구조</summary>
+    <div class="usage-body">
+      <p class="lead">WHERE 조건이 참(true)인 행만 결과로 돌아옵니다.</p>
+      <pre>SELECT * FROM users
 WHERE username='admin'
   AND password='1234';</pre>
-    <table style="margin-top:12px;">
-      <tr><th>SELECT</th><td>무엇을 조회할지 (여기서는 모든 컬럼 *)</td></tr>
-      <tr><th>FROM</th><td>어느 테이블에서 찾을지 (users 테이블)</td></tr>
-      <tr><th>WHERE</th><td>어떤 조건을 만족하는 행만 가져올지</td></tr>
-    </table>
-    <p class="note">WHERE 뒤의 조건이 <b>참(true)</b>인 행만 결과로 반환됩니다. SQL Injection은 결국 이 조건을 공격자가 원하는 대로 항상 참으로 만드는 것이 핵심입니다.</p>
-  </section>
+      <table style="margin-top:12px;">
+        <tr><th>SELECT</th><td>무엇을 조회할지 (여기서는 모든 컬럼 *)</td></tr>
+        <tr><th>FROM</th><td>어느 테이블에서 찾을지 (users 테이블)</td></tr>
+        <tr><th>WHERE</th><td>어떤 조건을 만족하는 행만 가져올지</td></tr>
+      </table>
+      <p class="note">WHERE 뒤의 조건이 <b>참(true)</b>인 행만 결과로 반환됩니다. SQL Injection은 결국 이 조건을 공격자가 원하는 대로 항상 참으로 만드는 것이 핵심입니다.</p>
+    </div>
+  </details>
 
-  <section class="basics">
-    <h2><span class="dot"></span>입력값이 SQL에 들어가는 과정</h2>
-    <p style="font-size:14.5px;color:#cfd2da;">서버 코드는 보통 이런 식으로 입력값을 쿼리 문자열에 직접 이어 붙입니다.</p>
-    <pre>$query = "SELECT * FROM users WHERE username='" . $input . "' AND ...";</pre>
-    <p class="note" style="margin-bottom:10px;">문제는 <code>$input</code> 자리에 <b>무엇이 들어와도 그대로 쿼리 문법의 일부가 된다</b>는 점입니다. 정상적인 값과 공격 값을 넣었을 때 실제 쿼리가 어떻게 달라지는지 비교해보세요.</p>
-    <div class="codepair">
-      <div>
-        <div class="lbl">정상 입력 → 정상 쿼리</div>
-        <pre>아이디: admin
+  <details class="usage basics">
+    <summary>입력값이 SQL에 들어가는 과정</summary>
+    <div class="usage-body">
+      <p class="lead">입력값이 그대로 쿼리 문법의 일부가 되어버립니다.</p>
+      <p style="font-size:14.5px;color:#cfd2da;">서버 코드는 보통 이런 식으로 입력값을 쿼리 문자열에 직접 이어 붙입니다.</p>
+      <pre>$query = "SELECT * FROM users WHERE username='" . $input . "' AND ...";</pre>
+      <p class="note" style="margin-bottom:10px;">문제는 <code>$input</code> 자리에 <b>무엇이 들어와도 그대로 쿼리 문법의 일부가 된다</b>는 점입니다. 정상적인 값과 공격 값을 넣었을 때 실제 쿼리가 어떻게 달라지는지 비교해보세요.</p>
+      <div class="codepair">
+        <div>
+          <div class="lbl">정상 입력 → 정상 쿼리</div>
+          <pre>아이디: admin
 비밀번호: 1234
 
 ↓
 
 WHERE username='admin'
   AND password='1234'</pre>
-      </div>
-      <div>
-        <div class="lbl">공격 입력 → 변조된 쿼리</div>
-        <pre>아이디: admin' OR '1'='1' --
+        </div>
+        <div>
+          <div class="lbl">공격 입력 → 변조된 쿼리</div>
+          <pre>아이디: admin' OR '1'='1' --
 비밀번호: (아무거나)
 
 ↓
 
 WHERE username='admin'
   OR '1'='1' --...</pre>
+        </div>
       </div>
+      <p class="note">오른쪽은 따옴표로 원래 문자열을 미리 닫고 <code>OR '1'='1'</code>을 붙여서, 비밀번호 조건과 상관없이 WHERE 절 전체가 항상 참이 되도록 만든 것입니다. <code>--</code> 뒤는 주석 처리되어 나머지 조건은 아예 무시됩니다.</p>
     </div>
-    <p class="note">오른쪽은 따옴표로 원래 문자열을 미리 닫고 <code>OR '1'='1'</code>을 붙여서, 비밀번호 조건과 상관없이 WHERE 절 전체가 항상 참이 되도록 만든 것입니다. <code>--</code> 뒤는 주석 처리되어 나머지 조건은 아예 무시됩니다.</p>
-  </section>
+  </details>
 
-  <section class="basics">
-    <h2><span class="dot"></span>취약한 코드의 특징</h2>
-    <ul class="plain">
-      <li>사용자 입력을 문자열 그대로 SQL 쿼리에 이어 붙인다 (문자열 concatenation)</li>
-      <li>입력값의 형식(길이, 타입, 허용 문자)을 검증하지 않는다</li>
-      <li>따옴표(')나 세미콜론(;), 주석(-- , #) 같은 특수문자를 걸러내지 않는다</li>
-      <li>블랙리스트 방식으로 특정 키워드만 막으려 한다 (우회가 항상 가능)</li>
-      <li>DB 오류 메시지를 사용자에게 그대로 노출한다 (공격자가 구조를 추측하기 쉬워짐)</li>
-    </ul>
-    <p class="note" style="margin-top:10px;">입력값 검증(길이·형식 체크, 특수문자 필터링)은 <b>보조적인 방어책</b>일 뿐입니다. SQL Injection의 근본적인 방어책으로 문자열 필터링에 의존해서는 안 됩니다 — SQL 구조와 사용자 입력을 완전히 분리하는 <b>Prepared Statement</b>가 핵심입니다. (Lv.3에서 필터링만으로는 왜 부족한지 직접 확인하게 됩니다.)</p>
-  </section>
+  <details class="usage basics">
+    <summary>취약한 코드의 특징</summary>
+    <div class="usage-body">
+      <p class="lead">입력을 검증 없이 그대로 쿼리에 이어붙이는 게 핵심 문제입니다.</p>
+      <ul class="plain">
+        <li>사용자 입력을 문자열 그대로 SQL 쿼리에 이어 붙인다 (문자열 concatenation)</li>
+        <li>입력값의 형식(길이, 타입, 허용 문자)을 검증하지 않는다</li>
+        <li>따옴표(')나 세미콜론(;), 주석(-- , #) 같은 특수문자를 걸러내지 않는다</li>
+        <li>블랙리스트 방식으로 특정 키워드만 막으려 한다 (우회가 항상 가능)</li>
+        <li>DB 오류 메시지를 사용자에게 그대로 노출한다 (공격자가 구조를 추측하기 쉬워짐)</li>
+      </ul>
+      <p class="note" style="margin-top:10px;">입력값 검증(길이·형식 체크, 특수문자 필터링)은 <b>보조적인 방어책</b>일 뿐입니다. SQL Injection의 근본적인 방어책으로 문자열 필터링에 의존해서는 안 됩니다 — SQL 구조와 사용자 입력을 완전히 분리하는 <b>Prepared Statement</b>가 핵심입니다. (Lv.3에서 필터링만으로는 왜 부족한지 직접 확인하게 됩니다.)</p>
+    </div>
+  </details>
 
-  <section class="basics">
-    <h2><span class="dot"></span>공격 원리</h2>
-    <div class="flow">입력값 삽입 → 쿼리 구조 변경 → 조건이 항상 참(또는 원하는 대로) → 의도하지 않은 결과 반환</div>
-    <p style="font-size:14.5px;color:#cfd2da;margin:0;">공격자는 애플리케이션의 실제 코드를 볼 수 없지만, 입력값에 따라 결과(성공/실패/오류 메시지)가 어떻게 달라지는지 관찰하면서 쿼리 구조를 역으로 추측하고, 그 구조를 자신에게 유리하게 바꾸는 페이로드를 조금씩 완성해 나갑니다. 아래 실습의 힌트도 바로 이 사고 과정을 단계별로 따라가도록 설계되어 있습니다.</p>
-  </section>
+  <details class="usage basics">
+    <summary>공격 원리</summary>
+    <div class="usage-body">
+      <p class="lead">입력 → 쿼리 변조 → 조건이 항상 참 → 의도치 않은 결과.</p>
+      <div class="flow">입력값 삽입 → 쿼리 구조 변경 → 조건이 항상 참(또는 원하는 대로) → 의도하지 않은 결과 반환</div>
+      <p style="font-size:14.5px;color:#cfd2da;margin:0;">공격자는 애플리케이션의 실제 코드를 볼 수 없지만, 입력값에 따라 결과(성공/실패/오류 메시지)가 어떻게 달라지는지 관찰하면서 쿼리 구조를 역으로 추측하고, 그 구조를 자신에게 유리하게 바꾸는 페이로드를 조금씩 완성해 나갑니다. 아래 실습의 힌트도 바로 이 사고 과정을 단계별로 따라가도록 설계되어 있습니다.</p>
+    </div>
+  </details>
 
-  <section class="basics">
-    <h2><span class="dot"></span>방어 방법 (개요)</h2>
-    <p style="font-size:14.5px;color:#cfd2da;margin:0;">핵심 방어책은 <b>입력값을 절대 SQL 문법으로 해석되지 않도록 분리하는 것</b>입니다 (Prepared Statement / 파라미터 바인딩). 이 외에도 입력값 검증, 에러 메시지 노출 최소화 등이 함께 쓰입니다. 자세한 대응표는 아래 실습을 마친 뒤 정리 섹션에서 확인할 수 있습니다.</p>
-  </section>
+  <details class="usage basics">
+    <summary>방어 방법 (개요)</summary>
+    <div class="usage-body">
+      <p class="lead">입력값과 SQL 구조를 분리하는 것(Prepared Statement)이 핵심입니다.</p>
+      <p style="font-size:14.5px;color:#cfd2da;margin:0;">핵심 방어책은 <b>입력값을 절대 SQL 문법으로 해석되지 않도록 분리하는 것</b>입니다 (Prepared Statement / 파라미터 바인딩). 이 외에도 입력값 검증, 에러 메시지 노출 최소화 등이 함께 쓰입니다. 자세한 대응표는 아래 실습을 마친 뒤 정리 섹션에서 확인할 수 있습니다.</p>
+    </div>
+  </details>
 
   <div id="practice"></div>
   <div class="attempts" id="progress" style="margin-bottom:10px;"></div>
