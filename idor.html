@@ -74,6 +74,14 @@
   footer{text-align:center; color:var(--muted); font-size:12.5px; margin-top:30px;}
   .skiplink{display:inline-block; margin-top:12px; font-size:13px; color:var(--accent); text-decoration:none; font-family:var(--mono);}
   .skiplink:hover{text-decoration:underline;}
+
+  details.usage{background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:4px 16px; margin:14px 0 20px;}
+  details.usage summary{cursor:pointer; padding:12px 0; font-size:14px; font-weight:600; color:var(--accent); list-style:none;}
+  details.usage summary::-webkit-details-marker{display:none;}
+  details.usage summary::before{content:"▸ "; color:var(--muted);}
+  details.usage[open] summary::before{content:"▾ "; color:var(--muted);}
+  details.usage .usage-body{padding:0 0 14px;}
+  .lead{font-size:17px; font-weight:700; color:var(--text); margin:0 0 12px; line-height:1.5;}
 </style>
 </head>
 <body>
@@ -84,30 +92,36 @@
     <a class="skiplink" href="#practice">기초 건너뛰고 바로 실습하기 →</a>
   </header>
 
-  <section class="basics">
-    <h2><span class="dot"></span>IDOR란 무엇인가?</h2>
-    <p style="font-size:14.5px;color:#cfd2da;margin:0;">웹 서비스는 보통 사용자마다 고유한 번호(ID)를 부여해 데이터를 관리합니다 (예: <code>/api/user?id=1</code>). 이때 서버가 <b>"현재 로그인한 사용자가 이 데이터를 볼 수 있는 권한이 있는가?"</b>를 검증하지 않고 파라미터 값만 믿고 그대로 데이터를 반환하면, 공격자가 ID 숫자를 임의로 바꾸어 다른 사용자의 민감한 개인정보를 탈취할 수 있습니다.</p>
-  </section>
+  <details class="usage basics">
+    <summary>IDOR란 무엇인가?</summary>
+    <div class="usage-body">
+      <p class="lead">ID 값만 바꾸면 다른 사람의 데이터를 볼 수 있는 권한 검증 누락 취약점입니다.</p>
+      <p style="font-size:14.5px;color:#cfd2da;margin:0;">웹 서비스는 보통 사용자마다 고유한 번호(ID)를 부여해 데이터를 관리합니다 (예: <code>/api/user?id=1</code>). 이때 서버가 <b>"현재 로그인한 사용자가 이 데이터를 볼 수 있는 권한이 있는가?"</b>를 검증하지 않고 파라미터 값만 믿고 그대로 데이터를 반환하면, 공격자가 ID 숫자를 임의로 바꾸어 다른 사용자의 민감한 개인정보를 탈취할 수 있습니다.</p>
+    </div>
+  </details>
 
-  <section class="basics">
-    <h2><span class="dot"></span>취약한 코드와 안전한 코드의 차이</h2>
-    <div class="codepair" style="margin-top:6px;">
-      <div>
-        <div class="lbl">취약한 코드 (Server)</div>
-        <pre>// 파라미터 ID를 권한 검증 없이 바로 조회
+  <details class="usage basics">
+    <summary>취약한 코드와 안전한 코드의 차이</summary>
+    <div class="usage-body">
+      <p class="lead">세션의 내 ID와 요청된 ID가 같은지 서버가 직접 확인해야 합니다.</p>
+      <div class="codepair" style="margin-top:6px;">
+        <div>
+          <div class="lbl">취약한 코드 (Server)</div>
+          <pre>// 파라미터 ID를 권한 검증 없이 바로 조회
 $id = $_GET['id'];$query = "SELECT * FROM users WHERE id = $id";
 $result = db_query($query);</pre>
-      </div>
-      <div>
-        <div class="lbl">안전한 코드 (Server)</div>
-        <pre>// 세션의 내 ID와 요청된 ID가 일치하는지 검증
+        </div>
+        <div>
+          <div class="lbl">안전한 코드 (Server)</div>
+          <pre>// 세션의 내 ID와 요청된 ID가 일치하는지 검증
 if ($_SESSION['user_id'] !=$_GET['id']) {
     die("접근 권한이 없습니다.");
 }
 $query = "SELECT * FROM users WHERE id = ?";</pre>
+        </div>
       </div>
     </div>
-  </section>
+  </details>
 
   <div id="practice"></div>
   <div class="attempts" id="progress" style="margin-bottom:10px;"></div>
