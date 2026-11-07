@@ -19,6 +19,8 @@ const {
   postCommentFiltered,
   postCommentPatched,
   resetComments,
+  checkCookieTheft,
+  XSS_CHALLENGE_FLAG,
 } = require('./db');
 
 const app = express();
@@ -168,6 +170,15 @@ app.post('/api/xss/:level/comments', requireStoredLevel, (req, res) => {
 // 실습 중 댓글함을 비우고 다시 시작할 때 사용 (학습 편의용)
 app.post('/api/xss/:level/reset', requireStoredLevel, (req, res) => {
   res.json(resetComments(req.params.level));
+});
+
+// Challenge Stage 2 — Stage 1(script 필터 우회로 스크립트 실행)만으로는 FLAG가 안 나옵니다.
+// 그 실행된 스크립트로 "document.cookie 값을 외부로 전송"하는 실제 피해 패턴까지 만들어야
+// 진짜 FLAG가 공개됩니다. (샌드박스 iframe이라 실제로 쿠키를 훔치진 않고, 패턴만 판정합니다)
+app.post('/api/xss/challenge/steal', (req, res) => {
+  const { comment = '' } = req.body || {};
+  const { filtered, stolen } = checkCookieTheft(comment);
+  res.json({ filtered, stolen, flag: stolen ? XSS_CHALLENGE_FLAG : null });
 });
 
 const PORT = process.env.PORT || 3000;

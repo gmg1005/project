@@ -199,6 +199,18 @@ function escapeHtml(s) {
 // Lv.3 / Challenge 에서 쓰는 블랙리스트 필터: 'script' 를 (대소문자 무시) 한 번에 전부 제거
 const stripScript = (s) => String(s).replace(/script/gi, '');
 
+// ---------- Challenge Stage 2: 쿠키 탈취 ----------
+// Stage 1(필터 우회로 스크립트 실행)만으로는 진짜 FLAG가 안 나옵니다. 그 실행된 스크립트로
+// "document.cookie 값을 외부로 전송하는" 실제 피해 패턴까지 만들어야 FLAG가 공개됩니다.
+// (이 실습은 샌드박스 iframe이라 실제로 쿠키를 훔치지는 않고, 그런 패턴인지만 판정합니다)
+const XSS_CHALLENGE_FLAG = 'FLAG{XSS_COOKIE_STOLEN}';
+function checkCookieTheft(comment) {
+  const filtered = stripScript(String(comment)); // Stage 1과 같은 script 필터를 통과해야 함
+  const stolen = /document\.cookie/i.test(filtered)
+    && (/fetch\s*\(/i.test(filtered) || /<img[^>]*\bsrc\s*=/i.test(filtered) || /new\s+image/i.test(filtered));
+  return { filtered, stolen };
+}
+
 // ---------- Lv.1 Reflected XSS: 검색어를 즉시 그 응답에만 반영 ----------
 
 // ⚠ 취약: 이스케이프 없이 그대로 삽입
@@ -269,4 +281,6 @@ module.exports = {
   postCommentFiltered,
   postCommentPatched,
   resetComments,
+  checkCookieTheft,
+  XSS_CHALLENGE_FLAG,
 };

