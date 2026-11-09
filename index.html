@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Web Security Lab — OWASP Top 10 실습실</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12151c; --panel:#1a1f29; --border:#2a3142; --text:#e8e6e1; --muted:#8b93a5;
+    --accent:#e2a63c; --danger:#e2574c; --success:#4fb87d;
+    --mono:'IBM Plex Mono', ui-monospace, monospace; --sans:'Noto Sans KR', system-ui, sans-serif;
+    box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:inherit;}
+  html,body{background:var(--bg);}
+  body{margin:0; color:var(--text); font-family:var(--sans); line-height:1.6; padding:40px 18px 80px;}
+  .wrap{max-width:760px;margin:0 auto;}
+  header{margin-bottom:30px; text-align:center;}
+  h1{font-size:24px; margin:0 0 8px; font-weight:700;}
+  .sub{color:var(--muted); font-size:14.5px; margin:0;}
+  .grid{display:grid; grid-template-columns:1fr; gap:14px;}
+  @media(min-width:560px){.grid{grid-template-columns:1fr 1fr;}}
+  a.card{
+    display:block; background:var(--panel); border:1px solid var(--border); border-radius:8px;
+    padding:20px; text-decoration:none; color:var(--text); transition:border-color .15s;
+  }
+  a.card:hover{border-color:var(--accent);}
+  .card .tag{font-family:var(--mono); font-size:12px; color:var(--success); border:1px solid var(--success); border-radius:3px; padding:2px 7px; display:inline-block; margin-bottom:10px;}
+  .card.disabled{opacity:.45; pointer-events:none;}
+  .card.disabled .tag{color:var(--muted); border-color:var(--muted);}
+  .card h2{font-size:16px; margin:0 0 6px;}
+  .card p{font-size:13.5px; color:#b9bdc6; margin:0;}
+  footer{text-align:center; color:var(--muted); font-size:12.5px; margin-top:36px;}
+
+  details.usage{background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:4px 16px; margin:14px 0 20px;}
+  details.usage summary{cursor:pointer; padding:12px 0; font-size:14px; font-weight:600; color:var(--accent); list-style:none;}
+  details.usage summary::-webkit-details-marker{display:none;}
+  details.usage summary::before{content:"▸ "; color:var(--muted);}
+  details.usage[open] summary::before{content:"▾ "; color:var(--muted);}
+  details.usage .usage-body{padding:0 0 14px;}
+  ul.plain{margin:0; padding-left:18px; font-size:13.5px; color:#d7dae0;}
+  ul.plain li{margin-bottom:6px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Web Security Lab</h1>
+    <p class="sub">OWASP Top 10 보안 취약점을 직접 공격해보면서 배우는 실습실입니다. 힌트는 단계적으로 열리고, 성공하면 취약한 코드와 패치된 코드를 바로 비교해서 보여줍니다.</p>
+  </header>
+
+  <details class="usage">
+    <summary>📖 사용법 (처음이시라면 펼쳐보세요)</summary>
+    <div class="usage-body">
+      <ul class="plain">
+        <li>아래 카드를 눌러 원하는 취약점 실습으로 이동하세요.</li>
+        <li>각 실습은 <b>기초 이론 → 레벨별 실습(힌트 제공) → 종합 Challenge(힌트 없음) → 방어자 퀴즈 → 정리</b> 순서로 구성되어 있어요.</li>
+        <li>레벨은 순서대로 진행하는 걸 권장하지만, 이미 아는 내용이 있다면 자유롭게 건너뛰어도 됩니다.</li>
+        <li>모든 실습은 브라우저 안에서만 동작하는 시뮬레이션이라 실제 서버나 DB에 영향을 주지 않습니다.</li>
+      </ul>
+    </div>
+  </details>
+
+  <div class="grid">
+    <a class="card" href="sqli.html">
+      <span class="tag">● 실습 가능</span>
+      <h2>SQL Injection</h2>
+      <p>로그인 우회부터 필터 우회, Prepared Statement로 패치된 버전까지 — 4개 레벨 + 종합 Challenge + 방어자 퀴즈</p>
+    </a>
+    <a class="card" href="xss.html">
+      <span class="tag">● 실습 가능</span>
+      <h2>Cross-Site Scripting (XSS)</h2>
+      <p>Reflected / Stored XSS부터 필터 우회, HTML 이스케이프로 패치된 버전까지 — 4개 레벨 + 종합 Challenge + 방어자 퀴즈</p>
+  <a class="card" href="idor.html">
+      <span class="tag">● 실습 가능</span>
+      <h2>Broken Access Control (IDOR)</h2>
+      <p>다른 사용자의 데이터에 URL 조작만으로 접근하는 취약점 — 프로필 조회 우회와 패치된 버전 실습</p>
+    </a>
+    <a class="card disabled" href="#">
+      <span class="tag">준비 중</span>
+      <h2>Broken Authentication</h2>
+      <p>세션/비밀번호 관리 미흡으로 인한 인증 우회</p>
+    </a>
+  </div>
+
+  <footer>모든 실습은 브라우저 안 시뮬레이션입니다 · 실제 서버/DB를 사용하지 않습니다</footer>
+</div>
+</body>
+</html>

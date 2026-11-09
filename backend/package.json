@@ -1,0 +1,15 @@
+{
+  "name": "web-security-lab-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SQLi/XSS Lv.1을 진짜 SQLite + Express로 동작시키는 최소 백엔드",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "express": "^4.22.3"
+  }
+}
