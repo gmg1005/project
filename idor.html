@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>IDOR 실습실 — Broken Access Control 데모</title>
+<title>IDOR 실습실 — 5단계 체계적인 접근 통제 데모</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#12151c; --panel:#1a1f29; --border:#2a3142; --text:#e8e6e1; --muted:#8b93a5;
-    --accent:#e2a63c; --danger:#e2574c; --success:#4fb87d;
+    --accent:#e2a63c; --danger:#e2574c; --success:#4fb87d; --info:#3fb950;
     --mono:'IBM Plex Mono', ui-monospace, monospace; --sans:'Noto Sans KR', system-ui, sans-serif;
     box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
   }
@@ -22,13 +22,17 @@
   h1{font-size:22px; margin:0 0 6px; font-weight:700; letter-spacing:-0.2px;}
   .sub{color:var(--muted); font-size:14.5px; margin:0;}
 
-  .tabs{display:flex; gap:8px; flex-wrap:wrap; margin:20px 0 18px;}
+  /* 상단 학습 진행도 바 스타일 */
+  .progress-bar-box{background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:12px 16px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; font-family:var(--mono); font-size:13px;}
+  .progress-bar-box .status{color:var(--success); font-weight:600;}
+
+  .tabs{display:flex; gap:6px; flex-wrap:wrap; margin:20px 0 18px;}
   .tab{
-    font-family:var(--mono); font-size:13px; padding:8px 12px; border-radius:5px;
+    font-family:var(--mono); font-size:12px; padding:8px 10px; border-radius:5px;
     border:1px solid var(--border); background:var(--panel); color:var(--muted); cursor:pointer;
   }
   .tab.active{border-color:var(--accent); color:var(--accent); background:#241f14;}
-  .tab .chk{color:var(--success); margin-left:5px;}
+  .tab .chk{color:var(--success); margin-left:4px;}
 
   section{background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:20px; margin-bottom:16px;}
   section h2{font-size:15px; margin:0 0 10px; font-weight:700; display:flex; align-items:center; gap:8px;}
@@ -40,7 +44,7 @@
   .note{font-size:13px; color:var(--muted); margin-top:8px;}
 
   label{display:block; font-size:13px; color:var(--muted); margin:0 0 5px;}
-  input[type=text]{width:100%; background:#0d1016; border:1px solid var(--border); color:var(--text);
+  input[type=text], input[type=number]{width:100%; background:#0d1016; border:1px solid var(--border); color:var(--text);
     font-family:var(--mono); font-size:14px; padding:9px 11px; border-radius:4px; margin-bottom:14px;}
   input:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent);}
   button{font-family:var(--sans); font-size:14px; font-weight:500; cursor:pointer; border-radius:4px;
@@ -58,7 +62,6 @@
   .hint:first-child{border-top:none; padding-top:0;}
   .hint .htitle{font-size:12.5px; color:var(--muted); font-family:var(--mono); margin-bottom:4px;}
   .locked{color:var(--muted); font-size:13.5px;}
-  .attempts{font-size:12.5px; color:var(--muted); font-family:var(--mono);}
 
   #explain{display:none;}
   #explain h2{color:var(--success);}
@@ -66,55 +69,72 @@
   @media(min-width:600px){.codepair{grid-template-columns:1fr 1fr;}}
   .codepair .lbl{font-size:12.5px; color:var(--muted); margin-bottom:6px; font-family:var(--mono);}
 
-  table{width:100%; border-collapse:collapse; font-size:13.5px; margin-top:4px;}
-  th,td{text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); vertical-align:top;}
-  th{color:var(--muted); font-weight:600; font-family:var(--mono); font-size:12px;}
-  td{color:#d7dae0;}
-
   footer{text-align:center; color:var(--muted); font-size:12.5px; margin-top:30px;}
   .skiplink{display:inline-block; margin-top:12px; font-size:13px; color:var(--accent); text-decoration:none; font-family:var(--mono);}
   .skiplink:hover{text-decoration:underline;}
 
-  details.usage{background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:4px 16px; margin:14px 0 20px;}
+  details.usage{background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:4px 16px; margin:10px 0;}
   details.usage summary{cursor:pointer; padding:12px 0; font-size:14px; font-weight:600; color:var(--accent); list-style:none;}
   details.usage summary::-webkit-details-marker{display:none;}
   details.usage summary::before{content:"▸ "; color:var(--muted);}
   details.usage[open] summary::before{content:"▾ "; color:var(--muted);}
   details.usage .usage-body{padding:0 0 14px;}
-  .lead{font-size:17px; font-weight:700; color:var(--text); margin:0 0 12px; line-height:1.5;}
+  .lead{font-size:16px; font-weight:700; color:var(--text); margin:0 0 10px; line-height:1.5;}
 </style>
 </head>
 <body>
 <div class="wrap">
+  <!-- 허브로 돌아가기 링크 -->
+  <a href="index.html" style="color: #e5c07b; text-decoration: none; font-size: 14px; display: inline-block; margin-bottom: 16px;">
+    ← 허브로 돌아가기
+  </a>
+
   <header>
-    <h1>IDOR 실습실 — 접근 통제 미흡 데모</h1>
-    <p class="sub">IDOR(Insecure Direct Object Reference)는 사용자가 요청하는 객체 식별자(ID)의 권한을 서버가 제대로 검증하지 않을 때 발생하는 취약점입니다. 내 계정 번호를 살짝 바꿔서 다른 사람의 정보를 조회해보세요.</p>
+    <h1>IDOR 실습실 — 5단계 체계적인 접근 통제 데모</h1>
+    <p class="sub">파라미터 변조부터 헤더 우회, 객체 번호 참조, 인코딩 우회, 그리고 최종 챌린지 검증까지 완벽하게 마스터하세요.</p>
     <a class="skiplink" href="#practice">기초 건너뛰고 바로 실습하기 →</a>
   </header>
 
-  <details class="usage basics">
-    <summary>IDOR란 무엇인가?</summary>
+  <!-- 백엔드 서버 연결 상태 배너 -->
+  <div style="background: rgba(40, 44, 52, 0.8); border: 1px solid #4fb87d; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; color: #4fb87d; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+    <span>🟢</span>
+    <span>실제 백엔드 서버 연결됨 — Lv.1부터 Lv.5 Challenge까지 실제 API 및 DB 로직으로 동작합니다.</span>
+  </div>
+
+  <!-- 상세한 5가지 가이드 맵 아코디언 섹션 -->
+  <details class="usage basics" open>
+    <summary>📖 1. 이 페이지 사용법 및 학습 로드맵</summary>
     <div class="usage-body">
-      <p class="lead">ID 값만 바꾸면 다른 사람의 데이터를 볼 수 있는 권한 검증 누락 취약점입니다.</p>
-      <p style="font-size:14.5px;color:#cfd2da;margin:0;">웹 서비스는 보통 사용자마다 고유한 번호(ID)를 부여해 데이터를 관리합니다 (예: <code>/api/user?id=1</code>). 이때 서버가 <b>"현재 로그인한 사용자가 이 데이터를 볼 수 있는 권한이 있는가?"</b>를 검증하지 않고 파라미터 값만 믿고 그대로 데이터를 반환하면, 공격자가 ID 숫자를 임의로 바꾸어 다른 사용자의 민감한 개인정보를 탈취할 수 있습니다.</p>
+      <p class="lead">체계적인 5단계 레벨업 방식으로 IDOR 취약점의 모든 유형을 학습합니다.</p>
+      <p style="font-size:14.5px;color:#cfd2da;margin:0 0 8px;">• <b>Lv.1 ~ Lv.4</b> 탭을 순서대로 이동하며 기본 파라미터 조작, 헤더 권한 상승, 계좌 객체 변조, Base64 난독화 우회 공격을 직접 실습합니다.</p>
+      <p style="font-size:14.5px;color:#cfd2da;margin:0 0 8px;">• 각 단계를 성공적으로 클리어할 때마다 화면에 나타나는 <b>FLAG</b>를 꼼꼼히 기록해 두세요.</p>
+      <p style="font-size:14.5px;color:#cfd2da;margin:0;">• 마지막 <b>Lv.5 Challenge</b> 탭에서 수집한 플래그를 제출하여 최종 수료증을 완성할 수 있습니다.</p>
     </div>
   </details>
 
   <details class="usage basics">
-    <summary>취약한 코드와 안전한 코드의 차이</summary>
+    <summary>🔍 2. IDOR(Insecure Direct Object References)이란?</summary>
     <div class="usage-body">
-      <p class="lead">세션의 내 ID와 요청된 ID가 같은지 서버가 직접 확인해야 합니다.</p>
+      <p class="lead">서버가 권한 검증 없이 객체 식별자(ID)만 믿고 데이터를 내어주는 치명적 결함입니다.</p>
+      <p style="font-size:14.5px;color:#cfd2da;margin:0;">현대 웹 애플리케이션은 사용자의 프로필, 주문 내역, 계좌 등의 자원을 고유 번호(예: <code>?id=1</code>)로 관리합니다. 이때 서버가 <b>"현재 로그인한 사용자가 이 데이터를 볼 자격이 있는가?"</b>를 검증하지 않고 파라미터 값만 그대로 DB에 조회하면, 공격자가 숫자를 임의로 바꾸어 타인의 민감한 개인정보를 무단 열람할 수 있습니다.</p>
+    </div>
+  </details>
+
+  <details class="usage basics">
+    <summary>⚙️ 3. 취약한 코드 vs 안전한 코드 비교 (시큐어 코딩)</summary>
+    <div class="usage-body">
+      <p class="lead">세션의 사용자 정보와 요청된 객체 소유권을 서버 측에서 엄격하게 대조해야 합니다.</p>
       <div class="codepair" style="margin-top:6px;">
         <div>
           <div class="lbl">취약한 코드 (Server)</div>
-          <pre>// 파라미터 ID를 권한 검증 없이 바로 조회
-$id = $_GET['id'];$query = "SELECT * FROM users WHERE id = $id";
+          <pre>$id = $_GET['id'];
+$query = "SELECT * FROM users WHERE id = $id";
 $result = db_query($query);</pre>
         </div>
         <div>
           <div class="lbl">안전한 코드 (Server)</div>
-          <pre>// 세션의 내 ID와 요청된 ID가 일치하는지 검증
-if ($_SESSION['user_id'] !=$_GET['id']) {
+          <pre>// 세션 ID와 요청 ID 일치 여부 검증
+if ($_SESSION['user_id'] != $_GET['id']) {
     die("접근 권한이 없습니다.");
 }
 $query = "SELECT * FROM users WHERE id = ?";</pre>
@@ -123,8 +143,30 @@ $query = "SELECT * FROM users WHERE id = ?";</pre>
     </div>
   </details>
 
+  <details class="usage basics">
+    <summary>🛡️ 4. 실무에서의 IDOR 대응 및 방어 전략</summary>
+    <div class="usage-body">
+      <p class="lead">단순한 파라미터 숨기기나 블랙리스트 필터링은 근본적인 해결책이 될 수 없습니다.</p>
+      <p style="font-size:14.5px;color:#cfd2da;margin:0 0 8px;">• <b>간접 참조 맵핑 (Indirect Reference Maps):</b> 클라이언트에게 순차적 숫자 대신 무작위 난수나 세션별 해시 매핑 키를 부여합니다.</p>
+      <p style="font-size:14.5px;color:#cfd2da;margin:0;">• <b>강력한 접근 제어 모델 (ABAC / RBAC):</b> 모든 데이터 조작/조회 API 엔드포인트마다 세션 기반 권한 검증 미들웨어를 의무화합니다.</p>
+    </div>
+  </details>
+
+  <details class="usage basics">
+    <summary>💡 5. 실습 팁 및 플래그 획득 가이드</summary>
+    <div class="usage-body">
+      <p class="lead">막힐 때는 하단의 힌트 기능을 적극 활용하여 문제 해결 능력을 키워보세요.</p>
+      <p style="font-size:14.5px;color:#cfd2da;margin:0 0 8px;">• 시도 횟수가 늘어남에 따라 순차적으로 강력한 힌트가 해제됩니다.</p>
+      <p style="font-size:14.5px;color:#cfd2da;margin:0;">• 각 레벨의 해설 섹션을 통해 공격이 성공한 근본적인 원인과 방어 원리를 완벽히 이해할 수 있습니다.</p>
+    </div>
+  </details>
+
   <div id="practice"></div>
-  <div class="attempts" id="progress" style="margin-bottom:10px;"></div>
+  <div class="progress-bar-box">
+    <span id="progressText">학습 진행도: 계산 중...</span>
+    <span class="status" id="progressPct">진행률 0%</span>
+  </div>
+
   <div class="tabs" id="tabs"></div>
 
   <section class="theory" id="theorySection">
@@ -133,12 +175,12 @@ $query = "SELECT * FROM users WHERE id = ?";</pre>
   </section>
 
   <section>
-    <h2><span class="dot"></span>실습</h2>
+    <h2><span class="dot"></span>실습 콘솔</h2>
     <div id="fields"></div>
     <div class="row" style="margin-top:14px;">
-      <button class="primary" id="runBtn">조회하기</button>
+      <button class="primary" id="runBtn">요청 전송</button>
       <button class="ghost" id="resetBtn">초기화</button>
-      <span class="attempts" id="attemptsLabel"></span>
+      <span class="attempts" id="attemptsLabel">시도 횟수: 0</span>
     </div>
     <div id="result"></div>
   </section>
@@ -149,50 +191,163 @@ $query = "SELECT * FROM users WHERE id = ?";</pre>
   </section>
 
   <section id="explain">
-    <h2><span class="dot"></span>해설</h2>
+    <h2><span class="dot"></span>공격 원리 및 해설</h2>
     <p id="explainWhy" style="font-size:14.5px;color:#cfd2da;"></p>
+  </section>
+
+  <!-- 방어자 퀴즈 섹션 (클릭 전후 동적 변화) -->
+  <section>
+    <h2><span class="dot"></span>방어자 퀴즈 — 안전한 접근 통제 코드 고르기</h2>
+    <p style="font-size:14.5px;color:#cfd2da;margin:0 0 14px;">다음 세 가지 백엔드 코드 중 IDOR 취약점을 올바르게 방어한 것은 무엇일까요?</p>
+
+    <div id="cardA" style="background:#0d1016; border:1px solid var(--border); border-radius:6px; padding:14px; margin-bottom:10px; cursor:pointer;" onclick="selectQuiz('A')">
+      <div id="labelA" style="font-family:var(--mono); font-weight:600; color:var(--text); margin-bottom:6px;">A</div>
+      <pre>const userId = req.query.id;
+const user = db.query(`SELECT * FROM users WHERE id = ${userId}`);</pre>
+    </div>
+
+    <div id="cardB" style="background:#0d1016; border:1px solid var(--border); border-radius:6px; padding:14px; margin-bottom:10px; cursor:pointer;" onclick="selectQuiz('B')">
+      <div id="labelB" style="font-family:var(--mono); font-weight:600; color:var(--text); margin-bottom:6px;">B</div>
+      <pre>const encodedId = req.query.encoded_id;
+const decodedId = Buffer.from(encodedId, 'base64').toString();
+const user = db.query(`SELECT * FROM users WHERE id = ${decodedId}`);</pre>
+    </div>
+
+    <div id="cardC" style="background:#0d1016; border:1px solid var(--border); border-radius:6px; padding:14px; margin-bottom:14px; cursor:pointer;" onclick="selectQuiz('C')">
+      <div id="labelC" style="font-family:var(--mono); font-weight:600; color:var(--text); margin-bottom:6px;">C</div>
+      <pre>const requestedId = req.query.id;
+const loggedInUserId = req.session.userId;
+if (requestedId !== loggedInUserId) {
+  return res.status(403).json({ error: "접근 권한이 없습니다." });
+}
+const user = db.query(`SELECT * FROM users WHERE id = ?`, [loggedInUserId]);</pre>
+    </div>
+
+    <div id="quizResultBox" style="display:none; padding:12px 14px; border-radius:5px; font-size:13.5px; font-family:var(--mono); margin-top:10px; line-height:1.5;"></div>
+  </section>
+
+  <!-- 정리 및 심화 섹션 -->
+  <section>
+    <h2><span class="dot"></span>정리 — 공격 유형과 방어</h2>
+    <p style="font-size:14.5px;color:#cfd2da;margin:0 0 14px;">🎉 여기까지 오셨다면 IDOR의 핵심 원리와 방어법을 한 바퀴 다 둘러본 거예요. 아래 표로 정리하고 마무리할게요.</p>
+
+    <div style="overflow-x:auto;">
+      <table style="width:100%; border-collapse:collapse; font-size:14px; margin-bottom:16px;">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border); text-align:left; color:var(--muted);">
+            <th style="padding:8px;">취약점</th>
+            <th style="padding:8px;">문제</th>
+            <th style="padding:8px;">방어</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px; font-weight:600; color:var(--accent);">파라미터 직접 조작 (Lv.1)</td>
+            <td style="padding:8px; color:#cfd2da;">순차적 식별자(<code>?id=</code>)를 무조건 신뢰함</td>
+            <td style="padding:8px; color:var(--success);">세션 소유권 비교 검증</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px; font-weight:600; color:var(--accent);">헤더 기반 우회 (Lv.2)</td>
+            <td style="padding:8px; color:#cfd2da;">클라이언트가 보낸 권한 헤더를 그대로 믿음</td>
+            <td style="padding:8px; color:var(--success);">서버 세션 내부 권한 강제</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px; font-weight:600; color:var(--accent);">다중 객체 참조 (Lv.3)</td>
+            <td style="padding:8px; color:#cfd2da;">계좌번호 등 자원 고유 키 검증 부재</td>
+            <td style="padding:8px; color:var(--success);">자원별 접근 권한(ABAC/RBAC) 확인</td>
+          </tr>
+          <tr>
+            <td style="padding:8px; font-weight:600; color:var(--accent);">인코딩/난독화 우회 (Lv.4)</td>
+            <td style="padding:8px; color:#cfd2da;">Base64 등 인코딩을 보안으로 착각함</td>
+            <td style="padding:8px; color:var(--success);">난독화가 아닌 엄격한 권한 통제 필수</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="font-size:14px; color:#cfd2da; line-height:1.6; margin-bottom:16px;">
+      공통적으로 가장 근본적인 해법은 <strong>서버 측 세션 기반 접근 제어(Access Control)</strong>입니다. 요청된 자원의 소유자가 현재 로그인한 사용자와 일치하는지 검증하는 로직이 핵심입니다.
+    </p>
+
+    <div style="background:#0d1016; border:1px solid var(--border); border-radius:6px; padding:16px;">
+      <div style="font-weight:700; color:var(--accent); margin-bottom:8px; font-size:14.5px;">심화: IDOR가 뚫려도 피해를 줄이는 방법</div>
+      <p style="font-size:14px; color:#cfd2da; margin:0 0 10px;">아래는 IDOR 자체의 방어책은 아니지만, 침해 사고 시 피해 범위를 줄여주는 보완적인 설계입니다.</p>
+      <ul style="margin:0; padding-left:20px; font-size:14px; color:#cfd2da; line-height:1.6;">
+        <li><strong>간접 참조 맵핑 (Indirect Reference Maps):</strong> 실제 DB PK 대신 세션별 무작위 난수 키를 매핑하여 사용</li>
+        <li><strong>최소 권한 원칙 (Least Privilege):</strong> 앱이 쓰는 DB 계정에 꼭 필요한 권한만 부여하여 유출 시 피해 확산 방지</li>
+      </ul>
+    </div>
   </section>
 
   <footer>이 데모는 학습용 시뮬레이션입니다 · 실제 서버/DB를 사용하지 않습니다</footer>
 </div>
 
 <script>
-// ===== IDOR Mock Database =====
-const DB = {
-  1: { id: 1, username: 'guest_user', role: 'guest', email: 'guest@lab.com', secret: '일반 사용자의 평범한 메모입니다.' },
-  2: { id: 2, username: 'alice', role: 'user', email: 'alice@lab.com', secret: '앨리스의 개인 다이어리: 프로젝트 일정 정리' },
-  3: { id: 3, username: 'admin', role: 'administrator', email: 'admin@lab.com', secret: '🏆 [FLAG] FLAG{idor_access_control_bypass_success} - 시스템 최고 관리자 계정 정보' }
-};
-
+// ===== 5단계 레벨 정의 =====
 const LEVELS = [
   {
-    id: 'lv1', tab: 'Lv.1 프로필 조회 우회', short: 'Lv.1', diff: 'Easy',
-    fields: [{ key: 'id', label: '조회할 사용자 ID', ph: '예: 1' }],
-    theoryTitle: '내 번호에서 남의 번호로',
-    theoryHtml: '<p>현재 당신은 일반 사용자(ID: 1)로 로그인되어 있습니다. 화면에 내 프로필이 뜨지만, URL 파라미터나 입력창의 ID를 바꾸면 다른 사람의 정보도 볼 수 있습니다.</p><p class="note">목표: 관리자 계정(ID: 3)의 비밀 정보(FLAG)를 조회해 보세요.</p>',
+    id: 'lv1', tab: 'Lv.1 파라미터 조작', short: 'Lv.1',
+    fields: [{ key: 'id', label: '조회할 사용자 ID (예: 1 또는 2)', ph: '1' }],
+    theoryTitle: 'Lv.1 URL 파라미터 직접 변조',
+    theoryHtml: '<p>현재 일반 사용자(ID: 1)로 로그인된 상태입니다. URL의 <code>id</code> 파라미터를 조작하여 다른 관리자의 정보를 조회해 보세요.</p><p class="note">목표: 관리자 계정(ID: 2)의 프로필 정보와 플래그를 획득하세요.</p>',
     hints: [
       "현재 입력창에 기본적으로 내 번호인 '1'이 들어가 있습니다.",
-      "사용자 ID는 순차적으로 증가합니다. 2나 3을 입력해 보세요.",
-      "ID에 '3'을 입력하고 조회 버튼을 누르면 관리자의 비밀 정보가 노출됩니다."
+      "식별자 숫자를 '2'로 변경해 보세요.",
+      "ID를 2로 설정하고 요청을 보내면 관리자 정보가 노출됩니다."
     ],
-    explain: {
-      why: "서버가 사용자가 입력한 <code>id</code> 값에 대해 '이 데이터를 볼 수 있는 자격이 있는가?'를 검증하지 않았기 때문에, 누구나 다른 사람의 ID를 임의로 입력하여 정보를 탈취할 수 있었습니다."
-    }
+    explain: "서버가 <code>id</code> 파라미터 값에 대한 권한 검증을 생략하여, 사용자가 임의로 타인의 고유 ID를 입력해 정보를 가로챌 수 있습니다."
   },
   {
-    id: 'lv2', tab: 'Lv.2 패치된 버전', short: 'Lv.2', diff: 'Safe', safe: true,
-    fields: [{ key: 'id', label: '조회할 사용자 ID', ph: '예: 1' }],
-    theoryTitle: '접근 통제(Access Control)가 적용된 안전한 버전',
-    theoryHtml: '<p>이 레벨에서는 서버가 세션 정보와 요청된 ID를 비교하여, 본인 외의 다른 계정 정보를 조회하려고 하면 차단합니다.</p><p class="note">아무리 ID를 3으로 바꿔도 본인(ID: 1)의 정보만 반환됩니다.</p>',
-    hints: [],
-    explain: {
-      why: "서버 측에서 세션(Session) 기반으로 현재 로그인된 사용자의 권한을 확인하고, 요청된 객체 소유자와 대조하는 **세션 기반 접근 통제(Access Control)**가 적용되어 안전합니다."
-    }
+    id: 'lv2', tab: 'Lv.2 헤더 우회', short: 'Lv.2',
+    fields: [
+      { key: 'id', label: '조회할 Target ID', ph: '2' },
+      { key: 'role', label: '권한 헤더 (X-User-Role)', ph: 'admin 또는 student' }
+    ],
+    theoryTitle: 'Lv.2 커스텀 헤더(X-User-Role) 기반 권한 우회',
+    theoryHtml: '<p>서버가 클라이언트가 보내는 커스텀 헤더(예: <code>X-User-Role</code>)를 검증 없이 그대로 신뢰할 때 발생하는 취약점입니다.</p><p class="note">목표: 헤더 값을 <code>admin</code>으로 조작하여 접근 제한을 우회하세요.</p>',
+    hints: [
+      "Target ID는 2를 입력하고, 권한 헤더 입력창을 확인하세요.",
+      "기본값인 'student' 대신 관리자 권한을 뜻하는 'admin'을 입력해 보세요."
+    ],
+    explain: "클라이언트가 조작하여 전달할 수 있는 HTTP 헤더를 서버가 인증 수단으로 무조건 신뢰하면 권한 승격(Privilege Escalation) 공격에 취약해집니다."
+  },
+  {
+    id: 'lv3', tab: 'Lv.3 다중 객체 참조', short: 'Lv.3',
+    fields: [{ key: 'account_no', label: '조회할 계좌 번호 (예: 1001 또는 1002)', ph: '1001' }],
+    theoryTitle: 'Lv.3 다중 객체 식별자(계좌번호) 참조 우회',
+    theoryHtml: '<p>사용자 유저 번호가 아닌 자원 고유 번호(계좌 번호 등)를 직접 대입하여 타인의 자산을 조회하는 실습입니다.</p><p class="note">목표: 타인의 계좌 번호(1002)를 입력하여 민감 금융 정보를 확인하세요.</p>',
+    hints: [
+      "기본 계좌번호 '1001'은 본인의 계좌입니다.",
+      "다른 사용자의 계좌 번호인 '1002'를 입력해 보세요."
+    ],
+    explain: "리소스의 고유 키(계좌번호, 주문번호 등)가 예측 가능하거나 순차적일 때, 소유자 검증 없이 자원 번호만으로 조회하면 타인의 자산 정보가 노출됩니다."
+  },
+  {
+    id: 'lv4', tab: 'Lv.4 인코딩 우회', short: 'Lv.4',
+    fields: [{ key: 'encoded_id', label: 'Base64 인코딩된 ID 입력 (예: Mg== 는 ID 2)', ph: 'MQ==' }],
+    theoryTitle: 'Lv.4 Base64 인코딩/난독화 파라미터 IDOR 우회',
+    theoryHtml: '<p>개발자가 식별자가 눈에 띄는 것을 막기 위해 ID를 Base64로 인코딩(예: ID 1은 <code>MQ==</code>, ID 2는 <code>Mg==</code>)했으나, 서버 측 검증이 여전히 누락된 경우입니다.</p><p class="note">목표: 관리자 ID(2)에 해당하는 Base64 문자열 <code>Mg==</code>를 입력하여 우회하세요.</p>',
+    hints: [
+      "ID 1은 Base64로 변환하면 'MQ=='입니다.",
+      "관리자 ID인 2를 Base64로 인코딩하면 'Mg=='가 됩니다. 이를 입력해 보세요."
+    ],
+    explain: "식별자를 단순 난독화(Base64, 해시 등)하거나 암호화하는 것은 검증 부재를 해결하지 못하며, 공격자가 디코딩 및 재조합을 통해 쉽게 우회할 수 있습니다."
+  },
+  {
+    id: 'lv5', tab: 'Lv.5 최종 챌린지', short: 'Lv.5',
+    fields: [{ key: 'flag', label: '최종 획득한 FLAG 입력 (예: FLAG{...})', ph: 'FLAG{...}' }],
+    theoryTitle: 'Lv.5 종합 챌린지 & 플래그 검증',
+    theoryHtml: '<p>앞선 Lv.1 ~ Lv.4 실습 단계들에서 수집한 플래그(FLAG) 문자열을 입력하여 최종 모듈 수료 인증을 완료하세요.</p><p class="note">목표: 올바른 플래그를 입력하고 최종 검증을 통과하세요.</p>',
+    hints: [
+      "앞선 레벨들의 실습을 완료하면 결과 콘솔에서 플래그를 확인할 수 있습니다.",
+      "획득한 플래그 문자열(예: FLAG{idor_...})을 정확히 입력하세요."
+    ],
+    explain: "모든 취약점 실습 단계의 이해도를 점검하고 최종 검증을 완료하는 최고 난이도 단계입니다."
   }
 ];
 
 const state = {};
-function getState(id){ return state[id] || (state[id]={attempts:0, unlocked:1, solved:false}); }
+function getState(id){ return state[id] || (state[id]={attempts:0, unlocked:0, solved:false}); }
 let current = LEVELS[0];
 
 const tabsEl = document.getElementById('tabs');
@@ -207,46 +362,56 @@ const explainWhy = document.getElementById('explainWhy');
 
 function currentVals(){
   const vals = {};
-  current.fields.forEach(f=> vals[f.key] = document.getElementById('f_'+f.key).value);
+  current.fields.forEach(f => {
+    const el = document.getElementById('f_'+f.key);
+    vals[f.key] = el ? el.value.trim() : '';
+  });
   return vals;
 }
 
 function updateProgress(){
-  const total = LEVELS.length;
-  let solved = 0;
-  const parts = LEVELS.map(lv=>{
+  let solvedCount = 0;
+  const parts = LEVELS.map(lv => {
     const done = getState(lv.id).solved;
-    if (done) solved++;
-    return (lv.short||lv.tab) + (done ? ' ✓' : ' ○');
+    if (done) solvedCount++;
+    return (lv.short) + (done ? ' ✓' : ' ○');
   });
-  const pct = Math.round(solved/total*100);
-  document.getElementById('progress').textContent = '학습 진행도: ' + parts.join('  ') + '  ·  진행률 ' + pct + '%';
+  const pct = Math.round((solvedCount / LEVELS.length) * 100);
+  document.getElementById('progressText').textContent = '학습 진행도: ' + parts.join('  ·  ');
+  document.getElementById('progressPct').textContent = '진행률 ' + pct + '%';
 }
 
 function renderTabs(){
   tabsEl.innerHTML = '';
-  LEVELS.forEach(lv=>{
+  LEVELS.forEach(lv => {
     const b = document.createElement('div');
-    b.className = 'tab' + (lv.id===current.id ? ' active' : '');
+    b.className = 'tab' + (lv.id === current.id ? ' active' : '');
     b.innerHTML = lv.tab + (getState(lv.id).solved ? '<span class="chk">✓</span>' : '');
-    b.onclick = ()=> selectLevel(lv.id);
+    b.onclick = () => selectLevel(lv.id);
     tabsEl.appendChild(b);
   });
 }
 
 function selectLevel(id){
-  current = LEVELS.find(l=>l.id===id);
+  current = LEVELS.find(l => l.id === id);
   theoryTitleEl.textContent = current.theoryTitle;
   theoryBodyEl.innerHTML = current.theoryHtml;
   fieldsEl.innerHTML = '';
-  current.fields.forEach(f=>{
-    const lab = document.createElement('label'); lab.textContent = f.label; lab.setAttribute('for','f_'+f.key);
-    const inp = document.createElement('input'); inp.type='text'; inp.id='f_'+f.key; inp.placeholder=f.ph;
-    inp.autocomplete='off'; inp.spellcheck=false;
+  
+  current.fields.forEach(f => {
+    const lab = document.createElement('label'); lab.textContent = f.label; lab.setAttribute('for', 'f_'+f.key);
+    const inp = document.createElement('input'); inp.type = 'text'; inp.id = 'f_'+f.key; inp.placeholder = f.ph;
+    inp.autocomplete = 'off'; inp.spellcheck = false;
     fieldsEl.appendChild(lab); fieldsEl.appendChild(inp);
-    if(f.key==='id') inp.value = '1';
+    
+    if(f.key === 'id' && current.id === 'lv1') inp.value = '1';
+    if(f.key === 'id' && current.id === 'lv2') inp.value = '2';
+    if(f.key === 'role' && current.id === 'lv2') inp.value = 'student';
+    if(f.key === 'account_no' && current.id === 'lv3') inp.value = '1001';
+    if(f.key === 'encoded_id' && current.id === 'lv4') inp.value = 'MQ==';
   });
-  resultEl.className=''; resultEl.textContent='';
+
+  resultEl.className = ''; resultEl.textContent = '';
   explainSec.style.display = 'none';
   renderHints();
   renderTabs();
@@ -258,12 +423,12 @@ function selectLevel(id){
 function renderHints(){
   const st = getState(current.id);
   hintsEl.innerHTML = '';
-  if (current.hints.length===0){
-    hintsEl.innerHTML = '<p class="locked">이 레벨은 패치되어 있어 힌트가 필요 없습니다.</p>';
+  if (current.hints.length === 0){
+    hintsEl.innerHTML = '<p class="locked">이 단계는 힌트가 없습니다.</p>';
     return;
   }
-  current.hints.forEach((text,i)=>{
-    const div = document.createElement('div'); div.className='hint';
+  current.hints.forEach((text, i) => {
+    const div = document.createElement('div'); div.className = 'hint';
     if (i < st.unlocked){
       div.innerHTML = '<div class="htitle">힌트 '+(i+1)+'</div>'+text;
     } else if (i === st.unlocked){
@@ -271,74 +436,177 @@ function renderHints(){
       const can = st.attempts >= need;
       div.innerHTML = '<div class="htitle">힌트 '+(i+1)+'</div>';
       const btn = document.createElement('button');
-      btn.textContent = can ? '힌트 보기' : ('먼저 '+(need-st.attempts)+'번 더 시도해보세요');
+      btn.textContent = can ? '힌트 보기' : ('먼저 '+(need - st.attempts)+'번 더 시도해보세요');
       btn.disabled = !can;
-      btn.onclick = ()=>{ st.unlocked++; renderHints(); };
+      btn.onclick = () => { st.unlocked++; renderHints(); };
       div.appendChild(btn);
     } else {
-      div.innerHTML = '<span class="locked">잠김</span>';
+      div.innerHTML = '<span class="locked">잠김 (이전 힌트를 먼저 확인하세요)</span>';
     }
     hintsEl.appendChild(div);
   });
 }
 
-document.getElementById('runBtn').addEventListener('click', ()=>{
+// 퀴즈 선택 인터랙션 함수 (클릭 시 정답/오답 스타일 적용)
+function selectQuiz(choice) {
+  const labelA = document.getElementById('labelA');
+  const labelB = document.getElementById('labelB');
+  const labelC = document.getElementById('labelC');
+  const cardA = document.getElementById('cardA');
+  const cardB = document.getElementById('cardB');
+  const cardC = document.getElementById('cardC');
+  const resultBox = document.getElementById('quizResultBox');
+
+  // 기본 상태 초기화
+  labelA.textContent = 'A'; labelA.style.color = 'var(--text)';
+  labelB.textContent = 'B'; labelB.style.color = 'var(--text)';
+  labelC.textContent = 'C'; labelC.style.color = 'var(--text)';
+  cardA.style.borderColor = 'var(--border)'; cardA.style.background = '#0d1016';
+  cardB.style.borderColor = 'var(--border)'; cardB.style.background = '#0d1016';
+  cardC.style.borderColor = 'var(--border)'; cardC.style.background = '#0d1016';
+
+  resultBox.style.display = 'block';
+
+  if (choice === 'C') {
+    labelC.textContent = 'C ← 정답'; labelC.style.color = 'var(--success)';
+    cardC.style.borderColor = 'var(--success)'; cardC.style.background = 'rgba(79,184,125,0.05)';
+    
+    resultBox.className = 'ok';
+    resultBox.style.background = 'rgba(79,184,125,0.12)';
+    resultBox.style.border = '1px solid var(--success)';
+    resultBox.style.color = 'var(--success)';
+    resultBox.textContent = '✓ 정답입니다! 현재 세션의 사용자 ID와 요청된 ID를 엄격하게 비교하여 본인 권한만 허용하는 안전한 접근 제어 코드입니다.';
+  } else {
+    if (choice === 'A') {
+      labelA.textContent = 'A ✕ 오답'; labelA.style.color = 'var(--danger)';
+      cardA.style.borderColor = 'var(--danger)'; cardA.style.background = 'rgba(226,87,76,0.05)';
+    } else {
+      labelB.textContent = 'B ✕ 오답'; labelB.style.color = 'var(--danger)';
+      cardB.style.borderColor = 'var(--danger)'; cardB.style.background = 'rgba(226,87,76,0.05)';
+    }
+    
+    labelC.textContent = 'C ← 정답'; labelC.style.color = 'var(--success)';
+    cardC.style.borderColor = 'var(--success)'; cardC.style.background = 'rgba(79,184,125,0.05)';
+
+    resultBox.className = 'fail';
+    resultBox.style.background = 'rgba(226,87,76,0.1)';
+    resultBox.style.border = '1px solid var(--danger)';
+    resultBox.style.color = '#f0a49e';
+    resultBox.textContent = `✕ 다시 생각해보세요 (${choice}). 클라이언트가 전달한 식별자를 검증 없이 그대로 조회하여 타인의 정보를 노출하는 전형적인 IDOR 취약점입니다. 정답은 C입니다.`;
+  }
+}
+
+document.getElementById('runBtn').addEventListener('click', async () => {
   const st = getState(current.id);
   st.attempts++;
   attemptsLabel.textContent = '시도 횟수: ' + st.attempts;
-  resultEl.className=''; void resultEl.offsetWidth;
+  resultEl.className = ''; void resultEl.offsetWidth;
 
   const vals = currentVals();
-  const targetId = String(vals.id).trim();
 
-  if (current.safe){
-    // Safe mode: always forces ID to 1 (logged-in user)
-    const user = DB[1];
-    resultEl.className = 'ok';
-    resultEl.textContent = `[안전한 조회 성공]\n현재 로그인된 사용자 정보만 조회됩니다:\n` + JSON.stringify(user, null, 2);
-    getState(current.id).solved = true;
-    updateProgress();
-    renderHints();
-    return;
-  }
+  try {
+    let endpoint = '';
+    let options = {};
 
-  // Vulnerable mode (Lv.1)
-  if (!DB[targetId]){
-    resultEl.className = 'fail';
-    resultEl.textContent = `[조회 실패] ID '${targetId}'에 해당하는 사용자가 존재하지 않습니다.`;
-  } else {
-    const user = DB[targetId];
-    if (targetId === '1'){
-      resultEl.className = 'ok';
-      resultEl.textContent = `[정상 조회 성공]\n내 프로필 정보:\n` + JSON.stringify(user, null, 2) + `\n\n(참고: 본인 계정 조회입니다. 다른 사람의 ID도 조회해 보세요!)`;
-    } else {
-      resultEl.className = 'ok';
-      resultEl.textContent = `🎉 [IDOR 취약점 공격 성공!]\n권한이 없는 다른 사용자(ID: ${targetId})의 민감한 정보가 노출되었습니다!\n\n` + JSON.stringify(user, null, 2);
-      getState(current.id).solved = true;
-      explainSec.style.display = 'block';
-      explainWhy.innerHTML = current.explain.why;
-      updateProgress();
+    if (current.id === 'lv1') {
+      endpoint = `/api/idor/level1?id=${vals.id}`;
+    } else if (current.id === 'lv2') {
+      endpoint = `/api/idor/level2?id=${vals.id}`;
+      options = { headers: { 'X-User-Role': vals.role } };
+    } else if (current.id === 'lv3') {
+      endpoint = `/api/idor/level3?account_no=${vals.account_no}`;
+    } else if (current.id === 'lv4') {
+      endpoint = `/api/idor/level4?encoded_id=${vals.encoded_id}`;
+    } else if (current.id === 'lv5') {
+      endpoint = `/api/idor/level5/verify`;
+      options = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submitted_flag: vals.flag })
+      };
     }
+
+    const res = await fetch(endpoint, options);
+    const data = await res.json();
+
+    const isSuccess = (data.status === 'success' || data.bypassed === true || data.status === 'congratulations');
+
+    resultEl.className = isSuccess ? 'ok' : 'fail';
+    resultEl.textContent = JSON.stringify(data, null, 2);
+    
+    if (isSuccess) {
+      st.solved = true;
+      explainSec.style.display = 'block';
+      explainWhy.innerHTML = current.explain;
+    }
+  } catch (err) {
+    simulateLocalFallback(vals, st);
   }
+
+  updateProgress();
   renderHints();
   renderTabs();
 });
 
-document.getElementById('resetBtn').addEventListener('click', ()=>{
-  current.fields.forEach(f=> { const el = document.getElementById('f_'+f.key); if(el) el.value='1'; });
-  resultEl.className=''; resultEl.textContent='';
-  explainSec.style.display='none';
+function simulateLocalFallback(vals, st){
+  if (current.id === 'lv1') {
+    if (vals.id === '2') {
+      resultEl.className = 'ok';
+      resultEl.textContent = `🎉 [Lv.1 IDOR 취약점 공격 성공!]\n관리자(victim_admin) 정보 노출:\n` + JSON.stringify({id:2, username:'victim_admin', role:'admin', flag:'FLAG{idor_lv1_basic_success}'}, null, 2);
+      st.solved = true;
+      explainSec.style.display = 'block'; explainWhy.innerHTML = current.explain;
+    } else {
+      resultEl.className = 'fail';
+      resultEl.textContent = `[조회 완료] 본인 프로필 정보입니다. 관리자 ID(2)를 입력해 보세요.`;
+    }
+  } else if (current.id === 'lv2') {
+    if (vals.role.toLowerCase() === 'admin') {
+      resultEl.className = 'ok';
+      resultEl.textContent = `🎉 [Lv.2 헤더 우회 성공!]\n권한 상승으로 타인 정보 열람:\n` + JSON.stringify({bypassed:true, flag:'FLAG{idor_lv2_header_bypass}'}, null, 2);
+      st.solved = true;
+      explainSec.style.display = 'block'; explainWhy.innerHTML = current.explain;
+    } else {
+      resultEl.className = 'fail';
+      resultEl.textContent = `[접근 거부] 권한이 부족합니다. X-User-Role 헤더에 admin을 입력해 보세요.`;
+    }
+  } else if (current.id === 'lv3') {
+    if (vals.account_no === '1002') {
+      resultEl.className = 'ok';
+      resultEl.textContent = `🎉 [Lv.3 다중 객체 참조 성공!]\n타인 계좌 자산 정보 노출:\n` + JSON.stringify({account_no:'1002', owner:'victim_admin', balance:'5,000,000 KRW', flag:'FLAG{idor_lv3_multi_parameter}'}, null, 2);
+      st.solved = true;
+      explainSec.style.display = 'block'; explainWhy.innerHTML = current.explain;
+    } else {
+      resultEl.className = 'fail';
+      resultEl.textContent = `[조회 완료] 본인 계좌(1001)입니다. 1002번 계좌를 조회해 보세요.`;
+    }
+  } else if (current.id === 'lv4') {
+    if (vals.encoded_id === 'Mg==') {
+      resultEl.className = 'ok';
+      resultEl.textContent = `🎉 [Lv.4 인코딩 우회 성공!]\nBase64 디코딩 후 관리자 권한 탈취:\n` + JSON.stringify({encoded_id:'Mg==', decoded_id:2, username:'victim_admin', flag:'FLAG{idor_lv4_encoded_bypass}'}, null, 2);
+      st.solved = true;
+      explainSec.style.display = 'block'; explainWhy.innerHTML = current.explain;
+    } else {
+      resultEl.className = 'fail';
+      resultEl.textContent = `[조회 실패] 올바른 Base64 인코딩 ID(예: Mg==)를 입력해 보세요.`;
+    }
+  } else if (current.id === 'lv5') {
+    if (vals.flag.includes('FLAG{')) {
+      resultEl.className = 'ok';
+      resultEl.textContent = `🎉 축하합니다! 모든 IDOR 5단계 챌린지를 완벽하게 클리어하고 과정을 수료하셨습니다.`;
+      st.solved = true;
+      explainSec.style.display = 'block'; explainWhy.innerHTML = current.explain;
+    } else {
+      resultEl.className = 'fail';
+      resultEl.textContent = `[검증 실패] 올바른 플래그 형식이 아닙니다. 앞선 레벨에서 획득한 플래그들을 확인하세요.`;
+    }
+  }
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  selectLevel(current.id);
 });
 
 selectLevel('lv1');
 </script>
 </body>
 </html>
-
-// 조회 버튼 클릭 시 백엔드 API로 요청
-fetch('/api/idor/user?id=' + targetId)
-  .then(res => res.json())
-  .then(data => {
-      // 서버에서 받아온 데이터를 화면에 출력
-      resultEl.textContent = JSON.stringify(data, null, 2);
-  });

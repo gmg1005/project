@@ -169,32 +169,35 @@ Stage 2(UNION SELECT)까지 풀어야 진짜 FLAG가 나옵니다.
 
 ## IDOR (Insecure Direct Object Reference)
 
-> ⚠ `idor.html`은 아직 이 API를 호출하지 않습니다. `fetch` 코드가 `</html>` 바깥에 있어서 실행되지 않고, 지금은 프론트 안의 로컬 mock 데이터로만 동작합니다. 프론트 연동은 아직 TODO입니다.
+> ✅ `idor.html`과 `server.js`의 5단계 라우트 연동 및 실시간 진행도, 동적 결과 UI 분기(ok/fail) 설정이 모두 완료되었습니다.
 
-### Lv.1 — 취약: 권한 검증 없음
+### 5단계 레벨별 API 명세
 
-| 메서드 | 경로 | 쿼리 파라미터 | 응답 |
-|---|---|---|---|
-| GET | `/api/idor/user?id=` | `id` (조회할 사용자 번호) | 사용자 객체 `{ id, username, role, email, secret }` 또는 `{ error }` (404) |
+| 레벨 | 메서드 | 경로 | 쿼리/바디 파라미터 | 응답 및 특징 |
+|---|---|---|---|---|
+| **Lv.1** | GET | `/api/idor/level1` | `?id=` (1 또는 2) | 파라미터 조작을 통한 타인(ID: 2) 프로필 정보 및 FLAG 노출 |
+| **Lv.2** | GET | `/api/idor/level2` | `?id=` / Header `X-User-Role` | 헤더 기반 권한 검증 우회 (`X-User-Role: admin`) |
+| **Lv.3** | GET | `/api/idor/level3` | `?account_no=` (1001 또는 1002) | 자원 고유 번호(계좌번호 1002) 대입을 통한 금융 정보 노출 |
+| **Lv.4** | GET | `/api/idor/level4` | `?encoded_id=` (Base64) | 식별자 Base64 난독화 디코딩 우회 (`Mg==` -> ID 2) |
+| **Lv.5** | POST | `/api/idor/level5/verify` | Body: `{ submitted_flag }` | 앞선 레벨에서 획득한 플래그 검증 및 최종 수료 인증 |
 
-- 로그인한 사용자가 누구든 상관없이, 요청한 `id`의 데이터를 그대로 돌려줍니다.
-- 테스트 계정: `id=1`(guest_user), `id=2`(alice), `id=3`(admin — `secret`에 FLAG 포함).
-- `id=2`나 `id=3`처럼 **내 계정이 아닌 id**를 조회했을 때 응답이 그대로 오면 IDOR 성공.
+---
 
-### Lv.4(패치) — 안전: 세션 ID와 비교
+### 프론트 연동 처리
 
-| 메서드 | 경로 | 쿼리 파라미터 | 응답 |
-|---|---|---|---|
-| GET | `/api/idor/secure-user?id=` | `id` | 본인 데이터 또는 `{ error }` (403) |
+`idor.html` 내부에서 `fetch` 함수를 통해 `server.js`의 API 엔드포인트를 직접 호출하며, 성공 및 실패 여부에 따라 UI 결과 박스 색상(`.ok` / `.fail`)이 동적으로 제어됩니다.
 
-- 서버가 "로그인된 사용자 ID"(지금은 `1`로 고정)와 요청한 `id`를 비교합니다. 다르면 `403`으로 차단.
-- `id=1`만 성공하고, `id=2`/`id=3`은 전부 403이 떠야 정상(패치 성공).
+```js
+const res = await fetch(`/api/idor/level1?id=${vals.id}`);
+const data = await res.json();
+// data.status, data.data, data.flag 활용
+```
 
 ---
 
 ## 프론트 연동 패턴 (참고)
 
-지금 `sqli.html`의 Lv.1에 이미 적용된 패턴입니다. 다른 레벨도 이 형태를 그대로 복사해서 경로만 바꾸면 됩니다.
+`sqli.html`의 Lv.1에 이미 적용된 패턴입니다. 다른 레벨도 이 형태를 그대로 복사해서 경로만 바꾸면 됩니다.
 
 ```js
 const res = await fetch('/api/sqli/lv2/vulnerable', {

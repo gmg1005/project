@@ -186,36 +186,78 @@ app.listen(PORT, () => {
   console.log(`✅ Web Security Lab backend running: http://localhost:${PORT}`);
 });
 
-// ===== IDOR 가상 데이터베이스 =====
-const IDOR_DB = {
-  1: { id: 1, username: 'guest_user', role: 'guest', email: 'guest@lab.com', secret: '일반 사용자의 평범한 메모입니다.' },
-  2: { id: 2, username: 'alice', role: 'user', email: 'alice@lab.com', secret: '앨리스의 개인 다이어리: 프로젝트 일정 정리' },
-  3: { id: 3, username: 'admin', role: 'administrator', email: 'admin@lab.com', secret: '🏆 [FLAG] FLAG{idor_access_control_bypass_success} - 시스템 최고 관리자 계정 정보' }
+// ==========================================
+// ========== IDOR 5단계 확장 구현 API ==========
+// ==========================================
+const IDOR_USERS_DB = {
+  1: { id: 1, username: 'sincheonchae', role: 'student', credit: '50,000 KRW', flag: 'FLAG{idor_lv1_basic_success}' },
+  2: { id: 2, username: 'victim_admin', role: 'admin', credit: '1,000,000 KRW', flag: 'FLAG{idor_lv2_header_bypass}' },
+  3: { id: 3, username: 'manager_lee', role: 'manager', credit: '500,000 KRW', flag: 'FLAG{idor_lv3_multi_parameter}' }
 };
 
-// 1. 취약한 IDOR API (권한 검증 없이 요청한 id 그대로 반환)
-app.get('/api/idor/user', (req, res) => {
-  const userId = req.query.id;
-  
-  if (!IDOR_DB[userId]) {
-    return res.status(404).json({ error: "사용자를 찾을 수 없습니다." });
+const IDOR_ACCOUNTS_DB = {
+  '1001': { owner: 'sincheonchae', balance: '50,000 KRW' },
+  '1002': { owner: 'victim_admin', balance: '5,000,000 KRW', flag: 'FLAG{idor_lv3_multi_parameter}' }
+};
+
+// Lv.1: 기본 파라미터 조작
+app.get('/api/idor/level1', (req, res) => {
+  const targetId = req.query.id || 1;
+  const user = IDOR_USERS_DB[targetId];
+  if (!user) {
+    return res.status(404).json({ status: 'error', message: '대상을 찾을 수 없습니다.' });
   }
-  
-  // 취약점 포인트: 현재 로그인한 사용자가 누구든 상관없이 요청된 id 데이터를 그대로 응답
-  res.json(IDOR_DB[userId]);
+  res.json({ level: 1, mission: 'URL 파라미터 조작', status: 'success', data: user });
 });
 
-// 2. 패치된 안전한 IDOR API (세션 또는 토큰 권한 검증 포함)
-app.get('/api/idor/secure-user', (req, res) => {
-  const requestedId = req.query.id;
-  
-  // 가정: 현재 로그인된 사용자의 실제 ID는 세션(여기서는 편의상 고정값 1)이라고 가정
-  const loggedInUserId = '1'; 
+// Lv.2: 헤더 우회 (X-User-Role: admin)
+app.get('/api/idor/level2', (req, res) => {
+  const targetId = req.query.id || 2;
+  const roleHeader = req.headers['x-user-role'];
 
-  // 방어 코드: 내 ID와 요청한 ID가 다르면 접근 차단
-  if (requestedId !== loggedInUserId) {
-    return res.status(403).json({ error: "접근 권한이 없습니다. (본인 정보만 조회 가능)" });
+  if (roleHeader && roleHeader.toLowerCase() === 'admin') {
+    const user = IDOR_USERS_DB[targetId] || IDOR_USERS_DB[2];
+    return res.json({ level: 2, mission: '헤더 우회 성공', bypassed: true, status: 'success', data: user, flag: user.flag });
   }
 
-  res.json(IDOR_DB[loggedInUserId]);
+  res.json({ level: 2, mission: '헤더 우회 실패', bypassed: false, status: 'restricted', message: '권한이 부족합니다. 관리자 헤더(X-User-Role: admin)를 주입해보세요.', data: IDOR_USERS_DB[1] });
+});
+
+// Lv.3: 다중 객체 참조 (계좌번호)
+app.get('/api/idor/level3', (req, res) => {
+  const accountNo = req.query.account_no || '1001';
+  const targetAccount = IDOR_ACCOUNTS_DB[accountNo] || IDOR_ACCOUNTS_DB['1001'];
+  res.json({ level: 3, mission: '다중 객체 식별자 우회', status: 'success', account_number: accountNo, data: targetAccount });
+});
+
+// Lv.4: Base64 인코딩 우회 (Mg== -> ID 2)
+app.get('/api/idor/level4', (req, res) => {
+  const encodedId = req.query.encoded_id || 'MQ==';
+  try {
+    let decodedId = Buffer.from(encodedId, 'base64').toString('ascii').trim();
+    const user = IDOR_USERS_DB[decodedId];
+
+    if (decodedId === '2' && user) {
+      return res.json({ level: 4, mission: 'Base64 인코딩 우회 성공', status: 'success', encoded_id: encodedId, decoded_id: decodedId, data: user, flag: 'FLAG{idor_lv4_encoded_bypass}' });
+    }
+  } catch (e) {}
+
+  res.json({ level: 4, mission: 'Base64 인코딩 우회 실패', status: 'fail', message: '올바른 Base64 인코딩 ID(예: Mg==)를 입력하세요.' });
+});
+
+// Lv.5 (Challenge): 최종 플래그 검증
+app.post('/api/idor/level5/verify', (req, res) => {
+  const { submitted_flag } = req.body || {};
+  const validFlags = [
+    'FLAG{idor_lv1_basic_success}',
+    'FLAG{idor_lv2_header_bypass}',
+    'FLAG{idor_lv3_multi_parameter}',
+    'FLAG{idor_lv4_encoded_bypass}'
+  ];
+
+  if (submitted_flag && (validFlags.includes(submitted_flag) || submitted_flag.includes('FLAG{'))) {
+    res.json({ level: 5, status: 'congratulations', message: '축하합니다! 모든 IDOR 5단계 챌린지를 완벽하게 클리어하고 과정을 수료하셨습니다.' });
+  } else {
+    res.status(400).json({ level: 5, status: 'failed', message: '올바른 플래그 형식이 아니거나 틀렸습니다. 각 레벨에서 획득한 플래그를 확인하세요.' });
+  }
 });

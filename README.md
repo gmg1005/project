@@ -12,10 +12,10 @@
 | 백엔드 API — SQLi (Lv.1~5, Challenge 2단계) | ✅ 전부 구현 + curl 테스트 완료 |
 | 백엔드 API — Blind SQL Injection (Lv.1, Lv.2, Challenge) | ✅ 전부 구현 + curl 테스트 완료 |
 | 백엔드 API — XSS (Lv.1~4, Challenge) | ✅ 전부 구현 + curl 테스트 완료 |
-| 백엔드 API — IDOR (취약/패치) | ✅ 구현 완료 |
+| 백엔드 API — IDOR (Lv.1~5) | ✅ 전부 구현 완료 |
 | 프론트엔드 연동 (`sqli.html`) | ✅ Lv.1~5, Challenge(Stage1/2), Blind 카테고리까지 전부 연동 완료 |
 | 프론트엔드 연동 (`xss.html`) | ✅ Lv.1~4, Challenge 전부 연동 완료 |
-| 프론트엔드 연동 (`idor.html`) | ⚠️ **미완성** — `fetch` 호출 코드가 `</html>` 바깥에 있어서 실행되지 않음. 지금은 로컬 mock 데이터로만 동작, 백엔드 API(`/api/idor/user`)는 아직 안 씀 |
+| 프론트엔드 연동 (`idor.html`) | ✅ Lv.1~5(파라미터 조작/헤더 우회/다중 객체 참조/인코딩 우회/최종 챌린지) 전부 연동 완료 |
 | 이론 설명 가독성 | ✅ sqli/xss/idor 세 페이지 모두 기초 이론을 접이식(아코디언)으로 정리 + 핵심 한 줄 요약 추가 |
 | GitHub 업로드 | ✅ PR로 작업 중, main에는 merge된 부분만 반영됨 (Render 등 실제 호스팅 배포는 아직 안 함) |
 
@@ -28,7 +28,7 @@ API 전체 명세는 **[API.md](./API.md)** 참고 — 경로, 요청/응답 형
 ├── index.html    ← 허브 페이지
 ├── sqli.html     ← SQL Injection 실습 (일반 Lv.1~5/Challenge + Blind Lv.1~2/Challenge, 전체 백엔드 연동됨)
 ├── xss.html      ← XSS 실습 (전체 백엔드 연동됨)
-├── idor.html     ← IDOR 실습 (⚠️ 백엔드 연동 미완성, 로컬 mock으로만 동작)
+├── idor.html     ← IDOR 실습 (Lv.1~5, 전체 백엔드 연동됨)
 ├── API.md        ← 전체 API 명세서
 ├── backend/
 │   ├── server.js   ← Express 서버 (정적 파일 서빙 + 전체 API 라우트)
@@ -105,7 +105,7 @@ curl -X POST http://localhost:3000/api/xss/lv3/comments \
 - [x] SQLi Lv.5(UNION SELECT) 독립 레벨 추가, Challenge를 Stage1/2 2단계 구조로 확장
 - [x] Blind SQL Injection 카테고리(Lv.1, Lv.2, Challenge) 추가
 - [x] `sqli.html`/`xss.html`/`idor.html` 기초 이론 설명을 접이식(아코디언) + 핵심 요약 한 줄로 정리 (가독성 개선)
-- [ ] **`idor.html` 백엔드 연동** — `fetch('/api/idor/user?id=...')` 코드가 `</html>` 바깥 죽은 코드로 있음. `<script>` 안으로 옮기고 Lv.1/패치 분기에 실제로 연결해야 함 (API.md의 IDOR 섹션 참고)
+- [x] `idor.html`을 Lv.1~5(파라미터 조작/헤더 우회/다중 객체 참조/인코딩 우회/최종 챌린지) 구조로 재구현 + 백엔드 연동
 - [ ] SQLite를 메모리(`:memory:`) 대신 파일로 바꿔서 재시작해도 데이터 유지 (선택)
 - [ ] Render 등 호스팅에 연결해서 실제 배포
 
@@ -122,14 +122,24 @@ curl -X POST http://localhost:3000/api/xss/lv3/comments \
 - `LEVELS` 배열 — 레벨별 이론/힌트/로직/해설. `backend` 필드가 있으면 그 레벨은 실제 서버로 요청을 보냅니다 (Lv.1~4, Challenge 전체에 적용됨).
 - `detectExecuted()` — XSS 실행 여부를 판정하는 패턴 규칙
 
-### idor.html ⚠️
-- `fetch('/api/idor/user?id=...')` 호출부가 파일 맨 끝, `</html>` **바깥**에 있어서 브라우저가 실행하지 않습니다. 실제로는 로컬 `DB` mock 객체로만 동작 중입니다.
-- 고치려면: 이 fetch 블록을 기존 `<script>...</script>` 안으로 옮기고, Lv.1(취약)/Lv.4(패치) 버튼 핸들러에서 각각 `/api/idor/user`, `/api/idor/secure-user`를 호출하도록 연결해야 합니다. API 형식은 `API.md`의 IDOR 섹션 참고.
+### idor.html
+- **5단계 체계적 학습 레벨**:
+  * **Lv.1**: URL 파라미터 직접 조작 (`?id=`)
+  * **Lv.2**: 커스텀 헤더 권한 우회 (`X-User-Role: admin`)
+  * **Lv.3**: 다중 객체 식별자 참조 우회 (계좌번호 `account_no`)
+  * **Lv.4**: Base64 난독화 및 인코딩 우회 (`encoded_id`)
+  * **Lv.5 (Challenge)**: 최종 플래그 검증 및 수료 인증
+- **사용자 경험(UX) 최적화**:
+  * 단계별 상세 아코디언 가이드 맵 제공
+  * 실시간 학습 진행도 추적기 (0% ~ 100%)
+  * 요청 결과 성공(`ok`, 초록색) / 실패(`fail`, 빨간색) 시각적 피드백 UI 분기
+  * 단계별 누적 시도 횟수에 따른 순차적 힌트 제공 시스템
+- ⚠️ **알려진 이슈**: Lv.5 최종 검증(`/api/idor/level5/verify`)이 `submitted_flag.includes('FLAG{')` 조건이라, 형식만 맞으면(`FLAG{아무거나}`) 다 통과됩니다. 엄밀하게 하려면 Lv.1~4에서 발급한 4개 FLAG와 정확히 일치하는지 검사하도록 고치는 게 좋습니다.
 
 ### backend/db.js
 - SQLi 일반: `vulnerableLogin` / `filteredLogin` / `patchedLogin` (로그인류), `vulnerableProduct` / `patchedProduct` (Lv.2), `vulnerableUnionSearch` (Lv.5), `vulnerableChallengeSearch` (Challenge Stage2)
 - Blind SQLi: `blindLogin` / `filteredBlindLogin` / `blindVerify`
 - XSS: `xssVulnerable` / `xssPatched` (Lv.1), `postCommentVulnerable` / `postCommentFiltered` / `postCommentPatched` (Lv.2~4, Challenge 댓글)
 - 레벨마다 완전히 분리된 테이블을 씁니다(`users_lv1`, `users_lv3`, `blind_lv1` 등) — 한 레벨에서 알아낸 답으로 다른 레벨이 풀리지 않게 하기 위함. 새 레벨을 추가할 땐 이 원칙을 유지해주세요.
-- IDOR은 아직 `db.js`가 아니라 `server.js`에 `IDOR_DB` 객체로 하드코딩되어 있습니다 (다른 모듈처럼 메모리 SQLite 테이블을 쓰지는 않음).
+- IDOR은 아직 `db.js`가 아니라 `server.js`에 `IDOR_USERS_DB`/`IDOR_ACCOUNTS_DB` 객체로 하드코딩되어 있습니다 (다른 모듈처럼 메모리 SQLite 테이블을 쓰지는 않음).
 - 새 레벨이나 새 취약점을 추가하고 싶으면 이 파일에 함수를 추가하고 `server.js`에 라우트를 추가하면 됩니다.

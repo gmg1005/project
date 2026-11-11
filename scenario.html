@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>보안 시나리오 — 실전 공격 상황 모음</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12151c; --panel:#1a1f29; --border:#2a3142; --text:#e8e6e1; --muted:#8b93a5;
+    --accent:#e2a63c; --danger:#e2574c; --success:#4fb87d;
+    --mono:'IBM Plex Mono', ui-monospace, monospace; --sans:'Noto Sans KR', system-ui, sans-serif;
+    box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:inherit;}
+  html,body{background:var(--bg);}
+  body{margin:0; color:var(--text); font-family:var(--sans); line-height:1.6; padding:32px 18px 80px;}
+  .wrap{max-width:760px;margin:0 auto;}
+  header{margin-bottom:22px;}
+  h1{font-size:22px; margin:0 0 6px; font-weight:700; letter-spacing:-0.2px;}
+  .sub{color:var(--muted); font-size:14.5px; margin:0;}
+  .skiplink{display:inline-block; margin-top:12px; font-size:13px; color:var(--accent); text-decoration:none; font-family:var(--mono);}
+  .skiplink:hover{text-decoration:underline;}
+
+  section{background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:20px; margin-bottom:16px;}
+  section h2{font-size:15px; margin:0 0 10px; font-weight:700; display:flex; align-items:center; gap:8px;}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex:none;}
+
+  details.usage{background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:4px 16px; margin:14px 0 20px;}
+  details.usage summary{cursor:pointer; padding:12px 0; font-size:14px; font-weight:600; color:var(--accent); list-style:none;}
+  details.usage summary::-webkit-details-marker{display:none;}
+  details.usage summary::before{content:"▸ "; color:var(--muted);}
+  details.usage[open] summary::before{content:"▾ "; color:var(--muted);}
+  details.usage .usage-body{padding:0 0 14px;}
+  ul.plain{margin:0; padding-left:18px; font-size:13.5px; color:#d7dae0;}
+  ul.plain li{margin-bottom:6px;}
+
+  .cat-row{display:flex; gap:0; margin:4px 0 20px; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--panel);}
+  .cat-btn{
+    flex:1; min-width:0; font-family:var(--sans); font-weight:600; font-size:13.5px; padding:12px 10px;
+    border:none; background:transparent; color:var(--muted); cursor:pointer; text-align:center;
+    border-right:1px solid var(--border);
+  }
+  .cat-btn:last-child{border-right:none;}
+  .cat-btn .tagline{display:block; font-size:11px; font-weight:400; color:var(--muted); margin-top:2px; font-family:var(--mono);}
+  .cat-btn.active{background:#241f14; color:var(--accent);}
+  .cat-btn.active .tagline{color:var(--accent); opacity:.75;}
+
+  .scenario-card{border:1px solid var(--border); border-radius:6px; padding:16px 18px; margin-bottom:14px; background:#1b202b;}
+  .scenario-head{display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;}
+  .scenario-num{font-family:var(--mono); font-size:11px; font-weight:700; padding:3px 8px; border-radius:10px; border:1px solid var(--border); color:var(--muted);}
+  .scenario-title{font-size:14.5px; font-weight:700; color:var(--text);}
+  .scenario-situation{font-size:14px; color:#cfd2da; margin:0 0 10px;}
+  .scenario-situation b{color:var(--text);}
+  .reveal-btn{font-family:var(--sans); font-size:13px; font-weight:600; cursor:pointer; border-radius:4px;
+    padding:8px 14px; border:1px solid var(--accent); background:transparent; color:var(--accent);}
+  .reveal-btn:hover{background:#241f14;}
+  .answer-box{display:none; margin-top:12px; padding:14px 16px; border-radius:5px; background:#0d1016; border:1px solid var(--border);}
+  .answer-box.open{display:block;}
+  .answer-row{font-size:13.5px; color:#d7dae0; margin-bottom:8px;}
+  .answer-row:last-child{margin-bottom:0;}
+  .answer-row .lbl{font-family:var(--mono); font-size:11.5px; color:var(--accent); display:block; margin-bottom:3px;}
+  .goto-link{display:inline-block; margin-top:10px; font-size:12.5px; font-family:var(--mono); color:var(--success); text-decoration:none;}
+  .goto-link:hover{text-decoration:underline;}
+
+  .lesson{background:#0d1016; border:1px solid var(--border); border-radius:6px; padding:16px; margin-top:4px;}
+  .lesson h3{font-size:13.5px; margin:0 0 8px; color:var(--accent);}
+  .lesson p{font-size:13.5px; color:#cfd2da; margin:0;}
+
+  footer{text-align:center; color:var(--muted); font-size:12.5px; margin-top:30px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="skiplink" href="index.html" style="margin-top:0;margin-bottom:10px;">← 허브로 돌아가기</a>
+  <header>
+    <h1>보안 시나리오 — 실전 상황 모음</h1>
+    <p class="sub">앞서 실습한 취약점들이 실제 서비스에서는 어떤 상황으로 나타날 수 있는지, 짧은 가상 시나리오로 모아봤습니다. 상황을 먼저 읽고, 어떤 공격이고 왜 위험한지 스스로 생각해본 뒤 정답을 확인해보세요.</p>
+  </header>
+
+  <details class="usage">
+    <summary>📖 이 페이지 사용법</summary>
+    <div class="usage-body">
+      <ul class="plain">
+        <li>카테고리(SQL Injection / XSS / IDOR)를 선택하면 해당 취약점이 실제로 벌어질 수 있는 상황이 나옵니다.</li>
+        <li>각 카드의 "상황"만 먼저 읽고, 어떤 공격 기법이 쓰였을지 생각해본 뒤 <b>정답 보기</b>를 눌러 확인하세요.</li>
+        <li>모든 시나리오는 교육 목적의 가상 상황이며, 특정 기업이나 실제 사건을 지칭하지 않습니다.</li>
+      </ul>
+    </div>
+  </details>
+
+  <div class="cat-row" id="catRow">
+    <button class="cat-btn active" data-cat="sql">SQL Injection<span class="tagline">로그인/검색 기능</span></button>
+    <button class="cat-btn" data-cat="xss">XSS<span class="tagline">게시판/공유 기능</span></button>
+    <button class="cat-btn" data-cat="idor">IDOR<span class="tagline">마이페이지/API</span></button>
+  </div>
+
+  <section>
+    <h2><span class="dot"></span><span id="catTitle"></span></h2>
+    <div id="scenarioList"></div>
+  </section>
+
+  <section>
+    <h2><span class="dot"></span>공통 교훈</h2>
+    <div class="lesson">
+      <h3>세 가지 취약점, 한 가지 원칙</h3>
+      <p>SQL Injection은 "입력값과 쿼리 구조"를, XSS는 "입력값과 HTML/스크립트 구조"를, IDOR은 "요청값과 서버의 권한 검증"을 분리하지 않아서 생깁니다. 겉보기엔 다른 취약점 같아도, 근본 원인은 전부 <b>"사용자가 보낸 값을 서버가 그대로 신뢰했다"</b>는 한 가지입니다. 필터링이나 난독화 같은 보조 수단에 의존하지 않고, 구조적으로 분리하는 것(Prepared Statement, 이스케이프, 서버 측 권한 검증)이 근본 해법입니다.</p>
+    </div>
+  </section>
+
+  <footer>이 페이지는 학습용 가상 시나리오입니다 · 실제 사건이나 기업을 지칭하지 않습니다</footer>
+</div>
+
+<script>
+const SCENARIOS = {
+  sql: {
+    title: 'SQL Injection — 실전 상황',
+    items: [
+      {
+        title: '쇼핑몰 로그인 폼',
+        situation: '한 쇼핑몰의 로그인 페이지는 아이디/비밀번호를 입력받아 그대로 SQL 쿼리에 이어 붙입니다. 어느 날 아이디 칸에 <code>admin\' OR \'1\'=\'1\' -- </code> 를 입력한 접속 기록이 발견됐습니다.',
+        type: 'SQL Injection — 로그인 우회 (문자열 연결)',
+        why: '입력값을 검증 없이 쿼리에 그대로 삽입해서, <code>OR \'1\'=\'1\'</code> 조건이 항상 참이 되어 비밀번호 확인 자체가 무력화됐습니다.',
+        result: '공격자가 비밀번호를 몰라도 관리자 계정으로 로그인 성공 → 전체 회원의 이름, 연락처, 주소 등 개인정보를 관리자 권한으로 열람 가능.',
+        link: 'sqli.html#quizSection'
+      },
+      {
+        title: '상품 검색 기능',
+        situation: '상품 검색창에 숫자 ID를 입력받는 기능이 있는데, 어느 사용자가 검색창에 <code>0 UNION SELECT id, salary FROM employees -- </code> 를 입력했습니다.',
+        type: 'SQL Injection — UNION SELECT 기반 데이터 유출',
+        why: '숫자형 파라미터를 따옴표 없이 그대로 쿼리에 붙이고, 컬럼 개수만 맞추면 전혀 다른 테이블의 데이터를 UNION으로 이어붙일 수 있었습니다.',
+        result: '원래 상품 목록만 보여야 할 화면에, 내부 직원 급여 테이블의 데이터가 그대로 노출됨.',
+        link: 'sqli.html#quizSection'
+      },
+      {
+        title: '"에러 메시지가 없어서 안전하다"고 믿은 로그인 폼',
+        situation: '이 로그인 폼은 성공/실패 메시지를 전혀 보여주지 않고 화면이 항상 똑같습니다. 그런데 서버 로그에 같은 계정으로 수천 번의 로그인 시도가 아주 빠르게 반복된 기록이 남아 있었습니다.',
+        type: 'Blind SQL Injection (Boolean-based)',
+        why: '화면에 데이터가 안 보여도, 서버 내부적으로 조건의 참/거짓에 따라 응답이 미묘하게 달랐고(예: 응답 속도, 아주 작은 문구 차이), 공격자가 그 1비트 정보만으로 비밀번호를 한 글자씩 복원했습니다.',
+        result: '데이터를 전혀 직접 보여주지 않는 "안전해 보이는" 시스템도, 미세한 반응 차이만으로 전체 비밀번호가 유출될 수 있음.',
+        link: 'sqli.html#quizSection'
+      }
+    ]
+  },
+  xss: {
+    title: 'XSS — 실전 상황',
+    items: [
+      {
+        title: '커뮤니티 게시판 댓글',
+        situation: '한 커뮤니티 게시판에 어떤 댓글을 단 이후로, 그 게시글을 열람한 여러 사용자의 계정에서 동시에 이상한 활동(자동 팔로우, 알 수 없는 게시글 작성)이 발생했습니다.',
+        type: 'Stored XSS',
+        why: '댓글 내용이 서버에 그대로 저장돼서, 이후 그 게시글을 보는 모든 방문자의 브라우저에서 악성 스크립트가 자동으로 실행됐습니다.',
+        result: '한 번 심어진 악성 댓글이 계속 남아있는 한, 그 글을 보는 모든 사용자가 피해자가 됨 — 한 명이 아니라 다수에게 전파되는 것이 특징.',
+        link: 'xss.html#quizSection'
+      },
+      {
+        title: '이벤트 공유 링크',
+        situation: '"이 이벤트 친구에게 공유하기" 기능으로 만들어진 링크를 받은 특정 사용자만 로그인이 풀리거나 알 수 없는 페이지로 리다이렉트되는 문제가 보고됐습니다. 다른 방법으로 직접 이벤트 페이지에 들어간 사람들은 문제가 없었습니다.',
+        type: 'Reflected XSS',
+        why: '공유 링크의 URL 파라미터에 스크립트가 포함돼 있었고, 서버가 그 파라미터 값을 검증 없이 그대로 페이지에 반영했습니다.',
+        result: '그 링크를 직접 클릭한 사람에게만 영향을 주는 것이 특징 — 악성 링크를 받은 특정 피해자만 공격당함.',
+        link: 'xss.html#quizSection'
+      },
+      {
+        title: '"&lt;script&gt; 태그만 걸러내니 안전하다"고 믿은 게시판',
+        situation: '이 게시판은 댓글에서 <code>&lt;script&gt;</code> 라는 글자가 들어가면 자동으로 지우도록 만들어뒀습니다. 그런데 어느 날 운영자 계정의 로그인 세션이 공격자에게 탈취되는 사고가 발생했습니다.',
+        type: 'XSS 필터 우회 + 쿠키 탈취',
+        why: '필터가 <code>script</code> 라는 단어만 지울 뿐, <code>&lt;img src=x onerror="..."&gt;</code> 같은 다른 방식의 스크립트 실행까지는 막지 못했고, 그 스크립트가 운영자의 <code>document.cookie</code> 값을 외부 서버로 전송했습니다.',
+        result: '단순 블랙리스트 필터링은 특정 키워드만 막을 뿐이라, 다른 벡터로 우회되면 세션 쿠키 탈취 같은 심각한 피해로 이어짐.',
+        link: 'xss.html#quizSection'
+      }
+    ]
+  },
+  idor: {
+    title: 'IDOR — 실전 상황',
+    items: [
+      {
+        title: '마이페이지 URL 파라미터',
+        situation: '한 사용자가 자신의 주문 내역 페이지 URL(<code>mypage?id=1024</code>)에서 숫자를 1025로 바꿔봤더니, 전혀 모르는 사람의 주문 내역과 결제 정보가 그대로 보였습니다.',
+        type: 'IDOR — 파라미터 직접 조작',
+        why: '서버가 "지금 로그인한 사람이 이 id의 주인이 맞는지" 검증하지 않고, URL에 적힌 id 값만 믿고 데이터를 그대로 내려줬습니다.',
+        result: '순차적으로 증가하는 ID 구조라면, 숫자만 바꿔가며 다른 모든 사용자의 개인정보·결제 정보를 조회할 수 있음.',
+        link: 'idor.html'
+      },
+      {
+        title: '모바일 앱 API 요청 헤더 위조',
+        situation: '한 앱 사용자가 네트워크 요청을 가로채는 툴로 자신의 앱이 보내는 요청을 들여다보다가, <code>X-User-Role: user</code> 라는 헤더를 발견하고 이를 <code>admin</code>으로 바꿔서 다시 보내봤습니다.',
+        type: 'IDOR — 클라이언트가 보낸 값을 신뢰 (권한 상승)',
+        why: '서버가 클라이언트(앱)가 보낸 헤더 값을 검증 없이 그대로 권한 판단 기준으로 사용했습니다. 클라이언트가 보내는 값은 사용자가 얼마든지 조작할 수 있습니다.',
+        result: '헤더 값 하나만 바꿔서 관리자 전용 데이터·기능에 그대로 접근 가능.',
+        link: 'idor.html'
+      },
+      {
+        title: '"ID를 암호화했으니 안전하다"는 착각',
+        situation: '개발팀은 사용자 ID가 URL에 그대로 노출되는 게 찜찜해서 Base64로 인코딩해서 내보냈습니다(예: <code>Mg==</code>). 그런데 몇 달 뒤, 이 인코딩 방식이 공개 블로그 글에서 "손쉬운 디코딩 방법"으로 소개된 걸 발견했습니다.',
+        type: 'IDOR — 인코딩을 암호화로 착각',
+        why: 'Base64는 암호화가 아니라 단순 인코딩이라, 디코딩 한 번이면 원래 값(숫자 ID)이 그대로 드러납니다. 검증 로직 자체가 없다는 근본 문제는 그대로였습니다.',
+        result: '난독화는 공격을 조금 귀찮게 만들 뿐, 근본적인 권한 검증 부재를 해결하지 못함 — 결국 다른 사람의 계좌·계정 정보에 접근 가능.',
+        link: 'idor.html'
+      }
+    ]
+  }
+};
+
+let currentCat = 'sql';
+const catTitleEl = document.getElementById('catTitle');
+const listEl = document.getElementById('scenarioList');
+
+function render(){
+  const data = SCENARIOS[currentCat];
+  catTitleEl.textContent = data.title;
+  listEl.innerHTML = '';
+  data.items.forEach((item, i) => {
+    const card = document.createElement('div');
+    card.className = 'scenario-card';
+    card.innerHTML =
+      '<div class="scenario-head"><span class="scenario-num">문제 ' + (i+1) + '</span><span class="scenario-title">' + item.title + '</span></div>' +
+      '<p class="scenario-situation">' + item.situation + '</p>' +
+      '<button class="reveal-btn">정답 보기</button>' +
+      '<div class="answer-box">' +
+        '<div class="answer-row"><span class="lbl">취약점 유형</span>' + item.type + '</div>' +
+        '<div class="answer-row"><span class="lbl">왜 뚫렸나</span>' + item.why + '</div>' +
+        '<div class="answer-row"><span class="lbl">결과</span>' + item.result + '</div>' +
+        '<a class="goto-link" href="' + item.link + '">→ ' + (item.link.indexOf('#quizSection') > -1 ? '관련 실습의 방어자 퀴즈로 바로가기' : '관련 실습 바로가기') + '</a>' +
+      '</div>';
+    const btn = card.querySelector('.reveal-btn');
+    const box = card.querySelector('.answer-box');
+    btn.addEventListener('click', () => {
+      const open = box.classList.toggle('open');
+      btn.textContent = open ? '정답 숨기기' : '정답 보기';
+    });
+    listEl.appendChild(card);
+  });
+}
+
+document.getElementById('catRow').addEventListener('click', (e) => {
+  const btn = e.target.closest('.cat-btn');
+  if (!btn) return;
+  currentCat = btn.dataset.cat;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.toggle('active', b === btn));
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
