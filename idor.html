@@ -606,7 +606,12 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   selectLevel(current.id);
 });
 
-selectLevel('lv1');
+(function initFromUrl(){
+  const params = new URLSearchParams(location.search);
+  const wantLevel = params.get('level');
+  const target = (wantLevel && LEVELS.some(l => l.id === wantLevel)) ? wantLevel : 'lv1';
+  selectLevel(target);
+})();
 </script>
 </body>
 </html>

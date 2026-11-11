@@ -1100,7 +1100,18 @@ document.querySelectorAll('.cat-btn').forEach(b=>{
   });
 });
 
-selectLevel('lv1');
+(function initFromUrl(){
+  const params = new URLSearchParams(location.search);
+  const wantCat = params.get('cat');
+  const wantLevel = params.get('level');
+  if (wantCat === 'blind') {
+    cat = 'blind';
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === 'blind'));
+  }
+  const pool = currentLevels();
+  const target = (wantLevel && pool.some(l => l.id === wantLevel)) ? wantLevel : pool[0].id;
+  selectLevel(target);
+})();
 
 // 실제 백엔드가 켜져 있는지 조용히 확인하고 배지를 띄움 (없어도 에러 없이 무시됨)
 fetch('/api/health').then(r=> r.ok ? r.json() : Promise.reject()).then(()=>{
