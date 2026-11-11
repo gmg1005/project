@@ -62,6 +62,10 @@
   .answer-row{font-size:13.5px; color:#d7dae0; margin-bottom:8px;}
   .answer-row:last-child{margin-bottom:0;}
   .answer-row .lbl{font-family:var(--mono); font-size:11.5px; color:var(--accent); display:block; margin-bottom:3px;}
+  .answer-row.defense-ok{border-left:3px solid var(--success); padding-left:10px;}
+  .answer-row.defense-ok .lbl{color:var(--success);}
+  .answer-row.defense-no{border-left:3px solid var(--danger); padding-left:10px;}
+  .answer-row.defense-no .lbl{color:var(--danger);}
   .goto-link{display:inline-block; margin-top:10px; font-size:12.5px; font-family:var(--mono); color:var(--success); text-decoration:none;}
   .goto-link:hover{text-decoration:underline;}
 
@@ -98,6 +102,14 @@
   </div>
 
   <section>
+    <h2><span class="dot"></span>실무 대응책 — Apache + ModSecurity(WAF)를 적용하면?</h2>
+    <div class="lesson" style="margin-top:0;">
+      <p>ModSecurity는 Apache/Nginx에 붙이는 오픈소스 WAF(Web Application Firewall)이고, 여기에 OWASP가 배포하는 CRS(Core Rule Set)를 함께 적용하면 요청 안에 들어있는 SQL Injection·XSS 같은 공격 패턴을 애플리케이션 코드에 도달하기 전, 웹 서버 단계에서 탐지해 차단할 수 있습니다. 즉 코드를 전혀 고치지 않아도 1차 방어선이 하나 생기는 셈입니다.</p>
+      <p style="margin-top:10px;"><b>단, 모든 유형을 막아주는 건 아닙니다.</b> SQLi·XSS는 공격 코드가 요청 안에 눈에 보이는 패턴으로 들어있어서 CRS가 탐지하기 좋지만, IDOR 같은 <b>Broken Access Control(OWASP Top 10 A01)</b>은 요청 자체가 문법적으로 완전히 정상이라(<code>?id=1025</code>, <code>X-User-Role: admin</code> 모두 "정상적인 형태의" 요청) WAF가 공격과 정상 사용을 구분할 근거가 없습니다. 이 범주는 ModSecurity를 적용해도 그대로 뚫리고, 반드시 애플리케이션 코드에서 "요청자 = 데이터 소유자" 검증을 넣어야만 막을 수 있습니다. 아래 각 시나리오마다 ModSecurity 적용 시 실제로 막히는지 여부를 표시해뒀습니다.</p>
+    </div>
+  </section>
+
+  <section>
     <h2><span class="dot"></span><span id="catTitle"></span></h2>
     <div id="scenarioList"></div>
   </section>
@@ -124,6 +136,7 @@ const SCENARIOS = {
         type: 'SQL Injection — 로그인 우회 (문자열 연결)',
         why: '입력값을 검증 없이 쿼리에 그대로 삽입해서, <code>OR \'1\'=\'1\'</code> 조건이 항상 참이 되어 비밀번호 확인 자체가 무력화됐습니다.',
         result: '공격자가 비밀번호를 몰라도 관리자 계정으로 로그인 성공 → 전체 회원의 이름, 연락처, 주소 등 개인정보를 관리자 권한으로 열람 가능.',
+        defense: { ok: true, text: 'Apache에 ModSecurity + OWASP CRS(Core Rule Set)를 적용하면, 요청 파라미터에 포함된 <code>OR \'1\'=\'1\'</code> 같은 SQL 메타문자·키워드 조합을 CRS의 SQLi 탐지 규칙(libinjection 기반)이 애플리케이션에 도달하기 전에 잡아내어 403으로 차단합니다.' },
         link: 'sqli.html?level=lv1'
       },
       {
@@ -132,6 +145,7 @@ const SCENARIOS = {
         type: 'SQL Injection — UNION SELECT 기반 데이터 유출',
         why: '숫자형 파라미터를 따옴표 없이 그대로 쿼리에 붙이고, 컬럼 개수만 맞추면 전혀 다른 테이블의 데이터를 UNION으로 이어붙일 수 있었습니다.',
         result: '원래 상품 목록만 보여야 할 화면에, 내부 직원 급여 테이블의 데이터가 그대로 노출됨.',
+        defense: { ok: true, text: '<code>UNION SELECT</code>처럼 여러 SQL 키워드가 한 요청에 조합되어 들어오는 패턴도 CRS SQLi 규칙의 탐지 대상이라, 쿼리가 DB까지 가기 전에 WAF 단계에서 차단됩니다.' },
         link: 'sqli.html?level=lv5'
       },
       {
@@ -140,6 +154,7 @@ const SCENARIOS = {
         type: 'Blind SQL Injection (Boolean-based)',
         why: '화면에 데이터가 안 보여도, 서버 내부적으로 조건의 참/거짓에 따라 응답이 미묘하게 달랐고(예: 응답 속도, 아주 작은 문구 차이), 공격자가 그 1비트 정보만으로 비밀번호를 한 글자씩 복원했습니다.',
         result: '데이터를 전혀 직접 보여주지 않는 "안전해 보이는" 시스템도, 미세한 반응 차이만으로 전체 비밀번호가 유출될 수 있음.',
+        defense: { ok: true, text: 'Blind SQLi도 입력값 안에 <code>SUBSTR</code>, <code>AND</code>, <code>OR</code> 같은 SQL 키워드가 들어가는 건 동일해서, CRS가 일반 SQLi와 같은 방식으로 탐지·차단할 수 있습니다. 다만 공격자가 요청을 잘게 나누거나 인코딩해서 우회를 시도하면 탐지율이 떨어질 수 있어, 로그 모니터링을 함께 둬야 합니다.' },
         link: 'sqli.html?cat=blind&level=blindlv1'
       }
     ]
@@ -153,6 +168,7 @@ const SCENARIOS = {
         type: 'Stored XSS',
         why: '댓글 내용이 서버에 그대로 저장돼서, 이후 그 게시글을 보는 모든 방문자의 브라우저에서 악성 스크립트가 자동으로 실행됐습니다.',
         result: '한 번 심어진 악성 댓글이 계속 남아있는 한, 그 글을 보는 모든 사용자가 피해자가 됨 — 한 명이 아니라 다수에게 전파되는 것이 특징.',
+        defense: { ok: true, text: '<code>&lt;img src=x onerror=...&gt;</code>나 <code>document.cookie</code> 같은 패턴은 CRS의 XSS 탐지 규칙에 걸려, 댓글이 저장되기 전에 요청 자체가 차단됩니다.' },
         link: 'xss.html?level=lv2'
       },
       {
@@ -161,6 +177,7 @@ const SCENARIOS = {
         type: 'Reflected XSS',
         why: '공유 링크의 URL 파라미터에 스크립트가 포함돼 있었고, 서버가 그 파라미터 값을 검증 없이 그대로 페이지에 반영했습니다.',
         result: '그 링크를 직접 클릭한 사람에게만 영향을 주는 것이 특징 — 악성 링크를 받은 특정 피해자만 공격당함.',
+        defense: { ok: true, text: 'Reflected XSS는 공격 코드가 URL 파라미터에 그대로 드러나기 때문에, CRS가 요청이 서버에 도달하는 단계에서 패턴을 바로 탐지할 수 있어 WAF가 특히 효과적인 유형입니다.' },
         link: 'xss.html?level=lv1'
       },
       {
@@ -169,6 +186,7 @@ const SCENARIOS = {
         type: 'XSS 필터 우회 + 쿠키 탈취',
         why: '필터가 <code>script</code> 라는 단어만 지울 뿐, <code>&lt;img src=x onerror="..."&gt;</code> 같은 다른 방식의 스크립트 실행까지는 막지 못했고, 그 스크립트가 운영자의 <code>document.cookie</code> 값을 외부 서버로 전송했습니다.',
         result: '단순 블랙리스트 필터링은 특정 키워드만 막을 뿐이라, 다른 벡터로 우회되면 세션 쿠키 탈취 같은 심각한 피해로 이어짐.',
+        defense: { ok: true, text: '게시판 자체 필터는 <code>script</code> 글자만 보지만, CRS는 <code>onerror=</code>, <code>javascript:</code>, 각종 이벤트 핸들러 속성 등 훨씬 넓은 패턴을 규칙으로 갖고 있어서, 이런 필터 우회 시도도 상당수 추가로 잡아낼 수 있습니다.' },
         link: 'xss.html?level=challenge'
       }
     ]
@@ -182,6 +200,7 @@ const SCENARIOS = {
         type: 'IDOR — 파라미터 직접 조작',
         why: '서버가 "지금 로그인한 사람이 이 id의 주인이 맞는지" 검증하지 않고, URL에 적힌 id 값만 믿고 데이터를 그대로 내려줬습니다.',
         result: '순차적으로 증가하는 ID 구조라면, 숫자만 바꿔가며 다른 모든 사용자의 개인정보·결제 정보를 조회할 수 있음.',
+        defense: { ok: false, text: '⚠ ModSecurity는 이 공격을 막지 못합니다. <code>?id=1025</code>는 문법적으로 완전히 정상적인 요청이라 WAF가 볼 수 있는 "공격 패턴"이 없고, "이 사용자가 1025번 데이터의 주인인지"는 WAF가 판단할 수 없는 정보입니다. 반드시 서버 코드에서 요청자 세션과 데이터 소유자를 대조하는 권한 검증을 추가해야 막을 수 있습니다.' },
         link: 'idor.html?level=lv1'
       },
       {
@@ -190,6 +209,7 @@ const SCENARIOS = {
         type: 'IDOR — 클라이언트가 보낸 값을 신뢰 (권한 상승)',
         why: '서버가 클라이언트(앱)가 보낸 헤더 값을 검증 없이 그대로 권한 판단 기준으로 사용했습니다. 클라이언트가 보내는 값은 사용자가 얼마든지 조작할 수 있습니다.',
         result: '헤더 값 하나만 바꿔서 관리자 전용 데이터·기능에 그대로 접근 가능.',
+        defense: { ok: false, text: '⚠ 이 역시 ModSecurity로 막을 수 없습니다. <code>X-User-Role: admin</code>이라는 헤더 자체는 형식상 아무 문제가 없는 정상 요청이고, WAF는 "클라이언트가 이 값을 보낼 자격이 있는지"를 알 방법이 없습니다. 근본 해법은 역할·권한 정보를 클라이언트가 보낸 값이 아니라 서버 세션에 저장된 값으로만 판단하도록 코드를 고치는 것입니다.' },
         link: 'idor.html?level=lv2'
       },
       {
@@ -198,6 +218,7 @@ const SCENARIOS = {
         type: 'IDOR — 인코딩을 암호화로 착각',
         why: 'Base64는 암호화가 아니라 단순 인코딩이라, 디코딩 한 번이면 원래 값(숫자 ID)이 그대로 드러납니다. 검증 로직 자체가 없다는 근본 문제는 그대로였습니다.',
         result: '난독화는 공격을 조금 귀찮게 만들 뿐, 근본적인 권한 검증 부재를 해결하지 못함 — 결국 다른 사람의 계좌·계정 정보에 접근 가능.',
+        defense: { ok: false, text: '⚠ 역시 WAF로는 해결되지 않습니다. Base64로 인코딩된 값도 요청 형식 자체는 정상이라 CRS 규칙에 걸릴 이유가 없고, 설령 디코딩해서 들여다봐도 "숫자 ID"라는 점에서는 문제 삼을 근거가 없습니다. IDOR(Broken Access Control, OWASP Top 10 A01)은 애초에 패턴 탐지로 막는 범주의 취약점이 아니라서, 코드 레벨의 소유권 검증이 유일한 해법입니다.' },
         link: 'idor.html?level=lv4'
       }
     ]
@@ -223,6 +244,7 @@ function render(){
         '<div class="answer-row"><span class="lbl">취약점 유형</span>' + item.type + '</div>' +
         '<div class="answer-row"><span class="lbl">왜 뚫렸나</span>' + item.why + '</div>' +
         '<div class="answer-row"><span class="lbl">결과</span>' + item.result + '</div>' +
+        '<div class="answer-row ' + (item.defense.ok ? 'defense-ok' : 'defense-no') + '"><span class="lbl">실무 대응책 — ModSecurity(WAF) 적용 시</span>' + item.defense.text + '</div>' +
         '<a class="goto-link" href="' + item.link + '">→ 해당 레벨 실습 바로가기</a>' +
       '</div>';
     const btn = card.querySelector('.reveal-btn');
