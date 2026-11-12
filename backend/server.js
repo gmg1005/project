@@ -36,6 +36,69 @@ app.use((req, res, next) => {
   next();
 });
 
+// ========== ModSecurity(WAF) 시뮬레이션 ==========
+// 실제 Apache + ModSecurity + OWASP CRS(Core Rule Set)를 설치하는 대신,
+// CRS가 쓰는 핵심 탐지 로직(구조적 패턴 매칭 — 토큰 치환이 아니라 'OR 1=1', UNION SELECT,
+// <script>, 이벤트 핸들러 속성 같은 "공격 형태 자체"를 봄)을 그대로 재현한 미들웨어입니다.
+// scenario.html에서 설명한 것과 동일하게: SQLi/XSS는 요청 자체에 패턴이 드러나서 여기서 잡히지만,
+// IDOR 라우트(/api/idor/*)에는 이 미들웨어를 아예 연결하지 않습니다 — 요청이 문법적으로 정상이라
+// 패턴 매칭으로는 원천적으로 탐지가 안 되기 때문입니다 (실제 ModSecurity도 마찬가지입니다).
+let wafEnabled = false;
+
+const CRS_RULES = [
+  // SQL Injection — OWASP CRS 942xxx 계열에 대응
+  { id: '942100', type: 'SQL Injection', re: /'\s*[\w\d]+\s*'\s*=\s*'\s*[\w\d]+\s*'/i },      // 'x'='x' 형태의 항상-참 조건(튜톨로지)
+  { id: '942260', type: 'SQL Injection', re: /\b(or|and)\b\s+['"]?\d/i },                       // OR 1=1 / AND 1=1 류의 불리언 조건
+  { id: '942270', type: 'SQL Injection', re: /union(\s|\/\*[\s\S]*?\*\/)+select/i },            // UNION SELECT
+  { id: '942360', type: 'SQL Injection', re: /(--|#|\/\*)/ },                                   // SQL 주석으로 쿼리 뒷부분을 잘라내는 패턴
+  { id: '942190', type: 'SQL Injection', re: /\bsubstr\s*\(/i },                                 // Blind SQLi에서 쓰는 SUBSTR
+  // XSS — OWASP CRS 941xxx 계열에 대응
+  { id: '941100', type: 'XSS', re: /<script[\s>]/i },                                           // <script> 태그
+  { id: '941160', type: 'XSS', re: /on\w+\s*=/i },                                               // onerror=, onload= 같은 이벤트 핸들러 속성
+  { id: '941150', type: 'XSS', re: /javascript\s*:/i },                                          // javascript: URI 스킴
+];
+
+function scanForAttack(value) {
+  if (typeof value !== 'string') return null;
+  for (const rule of CRS_RULES) {
+    const m = rule.re.exec(value);
+    if (m) return { rule, matched: m[0], field: value };
+  }
+  return null;
+}
+
+function wafMiddleware(req, res, next) {
+  if (!wafEnabled) return next();
+  const sources = [req.body || {}, req.query || {}];
+  for (const src of sources) {
+    for (const key of Object.keys(src)) {
+      const hit = scanForAttack(src[key]);
+      if (hit) {
+        return res.status(403).json({
+          blocked: true,
+          rule: hit.rule.id,
+          type: hit.rule.type,
+          field: hit.field,
+          matched: hit.matched,
+          regex: hit.rule.re.toString(),
+          message: `WAF 차단됨 — ${hit.rule.type} 공격 패턴이 탐지되었습니다 (OWASP CRS Rule ${hit.rule.id}). 애플리케이션에 도달하기 전에 ModSecurity가 요청을 차단했습니다.`,
+        });
+      }
+    }
+  }
+  next();
+}
+
+// SQLi/XSS 라우트에만 적용 — IDOR(/api/idor/*)에는 의도적으로 적용하지 않음
+app.use('/api/sqli', wafMiddleware);
+app.use('/api/xss', wafMiddleware);
+
+app.get('/api/waf/status', (req, res) => res.json({ enabled: wafEnabled }));
+app.post('/api/waf/toggle', (req, res) => {
+  wafEnabled = !!(req.body && req.body.enabled);
+  res.json({ enabled: wafEnabled });
+});
+
 // 프론트엔드(index.html, sqli.html, xss.html)를 같은 서버에서 그대로 서빙
 app.use(express.static(path.join(__dirname, '..')));
 
